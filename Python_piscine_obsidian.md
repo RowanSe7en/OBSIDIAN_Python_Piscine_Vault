@@ -1,4 +1,6 @@
-## Python Piscine
+
+---
+# PYTHON PISCINE
 
 ---
 
@@ -2120,27 +2122,20 @@ mypackage.print_secret()   # ERROR
 ### What Happens During Import
 
 When Python sees for example `import alchemy`, it:
-1. Locates folder `alchemy`
-2. Executes `alchemy/__init__.py`
-3. Python creates package object (`alchemy = <module object 'alchemy'>`) This object exists **only in RAM while the program runs**. It contains things like:
+1. Compile the file to bytecode
+2. Check cache (`sys.modules`) for `sys.modules["alchemy"]`, If already imported → reuse it, If not → continue.
+3. Execute the bytecode and locates folder `alchemy` in `sys.path`
+4. Executes `alchemy/__init__.py`
+5. Python creates package object (`alchemy = <module object 'alchemy'>`) This object exists **only in RAM while the program runs** as `sys.modules["alchemy"]`. It contains things like:
 	- `alchemy.__name__`
 	- `alchemy.__package__`
 	- `alchemy.__file__`
 	- `alchemy.create_fire` (if exposed in `__init__.py`)
-4. Python compiles `printer.py` and `__init__.py`, then creates `.pyc` files to store **compiled bytecode versions**
-5. Exposes names defined there
+6. During the step of compilation (AST to bytecode), Python may save the compiled bytecode `alchemy/__pycache__/__init__.cpython-312.pyc`, this is just a cache to speed up future runs.  It is **not required** for execution.
+7. Exposes names defined there
 ### What is `__pycache__`
 
 `__pycache__` is a directory automatically created by Python to store **compiled bytecode versions (`.pyc` files)** of modules that were **imported during program execution**.
-
-When you run a script that imports a package, Python does the following:
-
-1. Reads the `.py` source file of the module being imported.
-    
-2. Compiles it into **Python bytecode** (a lower-level representation executed by the Python interpreter).
-    
-3. Saves that compiled version inside a folder named `__pycache__`, usually in the **same directory as the module**.
-    
 
 For example, if your structure is:
 
@@ -2426,8 +2421,11 @@ def lead_to_gold():
 ✅ Clear and unambiguous, works no matter where the importing file is located.
 ❌ Can be long in deep hierarchies.
 
----
+### Top-Level Import (`from basic import lead_to_gold`)
 
+A top-level import does not reference the current package. Instead, Python searches for the module `basic` in the directories listed in `sys.path`, which include the current working directory, installed packages, and other configured paths. Because no package context is specified, Python expects `basic.py` to exist as a **top-level module**. If the actual file is located inside a package such as `alchemy/transmutation/basic.py`, Python will not find it using this statement and will raise a `ModuleNotFoundError`. To import it correctly in that case, the full package path must be used, such as `from alchemy.transmutation.basic import lead_to_gold`.
+
+---
 ### 2️⃣ Relative Import
 
 Specifies the path relative to the current module using dots:
@@ -2449,12 +2447,7 @@ def philosophers_stone():
 
 ### Relative Import (`from .basic import lead_to_gold`)
 
-A relative import uses dots to reference modules **relative to the current package location**. In the statement `from .basic import lead_to_gold`, the dot (`.`) means “start from the current package.” Python determines the current package using the `__package__` variable that is automatically set when the module is imported. If the module belongs to the package `alchemy.transmutation`, then Python resolves the import as `alchemy.transmutation.basic`. It then loads the module `basic.py` located in the same package and imports the function `lead_to_gold` from it. Relative imports are typically used for **internal communication between modules inside the same package**, allowing modules to reference nearby files without writing the full package path.
-
-### Top-Level Import (`from basic import lead_to_gold`)
-
-A top-level import does not reference the current package. Instead, Python searches for the module `basic` in the directories listed in `sys.path`, which include the current working directory, installed packages, and other configured paths. Because no package context is specified, Python expects `basic.py` to exist as a **top-level module**. If the actual file is located inside a package such as `alchemy/transmutation/basic.py`, Python will not find it using this statement and will raise a `ModuleNotFoundError`. To import it correctly in that case, the full package path must be used, such as `from alchemy.transmutation.basic import lead_to_gold`.
-
+A relative import uses dots to reference modules **relative to the current package location**. BTW to use relative imports with dots (`from .module import ...`), your code must be inside a Python package (a folder containing an `__init__.py` file). In the statement `from .basic import lead_to_gold`, the dot (`.`) means “start from the current package.” Python determines the current package using the `__package__` variable that is automatically set when the module is imported. If the module belongs to the package `alchemy.transmutation`, then Python resolves the import as `alchemy.transmutation.basic`. It then loads the module `basic.py` located in the same package and imports the function `lead_to_gold` from it. Relative imports are typically used for **internal communication between modules inside the same package**, allowing modules to reference nearby files without writing the full package path.
 ### Parent Relative Import (`from ..basic import lead_to_gold`)
 
 ```
