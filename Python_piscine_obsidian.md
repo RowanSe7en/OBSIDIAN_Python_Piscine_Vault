@@ -2174,10 +2174,19 @@ These `.pyc` files allow Python to **load the module faster in future executions
 
 **Namespace:** A container that holds names (identifiers) and maps them to objects.
 
+When you write:
+
 ```python
-import mymodule
-mymodule.foo()    # Python looks in the mymodule namespace
-print(mymodule.bar)
+from animals.dog import bark
+```
+
+`animals` is a **package namespace**.
+
+It’s a container holding modules:
+
+```
+animals namespace
+└── dog
 ```
 
 **API (Application Programming Interface):** The set of functions, classes, and variables a module or package exposes for others to use.
@@ -2355,44 +2364,125 @@ If you try to `import a` or `import b`, Python gets stuck because:
 - Crash or `ImportError` occurs
 ### How to Fix Circular Dependencies
 
-**1️⃣ Late Import (Recommended)**
+**1 Late Import (Recommended)**
 
-Import the module inside a function instead of at the top.
-
+**`one.py`**
 ```python
-## spellbook.py
-def record_spell(spell_name, ingredients):
-    from validator import validate_ingredients  # imported here
-    result = validate_ingredients(ingredients)
-    return f"Spell recorded: {spell_name} ({result})"
+def func_a():
+    from two import func_b
+    print("Function A")
+
+func_a()
 ```
 
-Python doesn't import `validator` until the function runs → no circular problem.
-
-**2️⃣ Dependency Injection**
-
-Pass the function or object from one module to another instead of importing.
-
+**`two.py`**
 ```python
-## spellbook.py
-def record_spell(spell_name, ingredients, validator_func):
-    result = validator_func(ingredients)
-    return f"Spell recorded: {spell_name} ({result})"
+def func_b():
+    from one import func_a
+    print("Function B")
+
+func_b()
 ```
 
-Now `spellbook` doesn't need to import `validator`. The caller provides `validate_ingredients` as a parameter.
+**Execution Trace**
 
-**3️⃣ Separate Shared Module**
+When you run `python one.py`, here's exactly what happens:
 
-Move shared functions to a new module that both modules can safely import.
-
-```python
-## utils.py
-def validate_ingredients(ingredients):
-    ...
+```
+python one.py
+│
+├── [__main__] func_a is defined
+├── [__main__] func_a() is called
+│   │
+│   └── from two import func_b  →  triggers full execution of two.py
+│       │
+│       ├── [two] func_b is defined
+│       ├── [two] func_b() is called
+│       │   │
+│       │   └── from one import func_a  →  triggers full execution of one.py
+│       │       │                           (as module "one", NOT __main__)
+│       │       │
+│       │       ├── [one] func_a is defined
+│       │       ├── [one] func_a() is called
+│       │       │   └── from two import func_b  →  already cached, no re-run
+│       │       │
+│       │       └── print("Function A")  ──────────────────────────── A ①
+│       │
+│       └── print("Function B")  ────────────────────────────────── B ②
+│
+└── print("Function A")  ──────────────────────────────────────── A ③
 ```
 
-Both `spellbook.py` and `validator.py` import `utils.py`. No circular import occurs.
+The trick is that **`__main__` ≠ module `one`** in Python's module registry (`sys.modules`).
+
+| Execution | Module name in `sys.modules` |
+|---|---|
+| `python one.py` | Registered as `__main__` |
+| `from one import ...` inside two.py | Registered as `one` (a fresh import!) |
+
+Because of this, `one.py` runs **twice** — once as `__main__` and once as `one` — while `two.py` runs only once, giving you **A → B → A**.
+
+---
+
+**2 Dependency Injection**
+
+```python
+# two.py
+def func_b():
+    print("Function B")
+```
+
+```python
+# one.py
+def func_a(func_b):
+    print("Function A")
+    func_b()
+
+if __name__ == "__main__":
+    from two import func_b
+    func_a(func_b)          # wiring happens right here
+```
+
+Run: `python one.py` → works fine, no third file needed.
+
+---
+
+**3 Separate Shared Module**
+
+Move shared functions to a new module that both modules can safely import. or use an other file that imports both of them.
+
+`shared.py` is the only one that imports — `one.py` and `two.py` know nothing about each other.
+
+**`one.py`** ← no imports at all
+
+```python
+def func_a():
+    print("Function A")
+```
+
+**`two.py`** ← no imports at all
+
+```python
+def func_b():
+    print("Function B")
+```
+
+**`shared.py`** ← the only file that imports from both
+
+```python
+from one import func_a
+from two import func_b
+
+func_a()
+func_b()
+```
+
+**Output of `python shared.py`:**
+
+```
+Function A
+Function B
+```
 
 ---
 
@@ -2462,6 +2552,369 @@ alchemy/
 ```
 
 In `advanced.py`, `from ..basic import lead_to_gold` uses `..` to move one package level up from the current module (`alchemy.transmutation.potions.codes`), navigating up to `alchemy.transmutation.potions`, then looking for `basic` relative to that level.
+
+---
+# Is `__init__.py` Necessary in Python Packages?
+
+Below are two complete mini-projects that do the same thing.
+Both let you run python main.py and import a package called mathpack.
+
+One uses `__init__.py` , the other uses namespace package (no init).
+
+## 1️⃣ Package WITH empty `__init__.py`
+
+## Folder structure
+
+```
+project_with_empty_init/
+│
+├── main.py
+└── mathpack/
+    ├── __init__.py   ← empty file
+    ├── add.py
+    └── mul.py
+```
+
+---
+
+## mathpack/**init**.py
+
+```python
+# empty on purpose
+```
+
+### mathpack/add.py
+
+```python
+def add(a, b):
+    return a + b
+```
+
+### mathpack/mul.py
+
+```python
+def multiply(a, b):
+    return a * b
+```
+
+### main.py
+
+```python
+from mathpack.add import add
+from mathpack.mul import multiply
+
+print("Add:", add(5, 3))
+print("Multiply:", multiply(5, 3))
+```
+
+### ▶️ Run
+
+```
+cd project_with_empty_init
+python main.py
+```
+
+Output:
+
+```
+Add: 8
+Multiply: 15
+```
+
+---
+
+## 2️⃣ Package WITHOUT `__init__.py`
+
+## Folder structure
+
+```
+project_without_init/
+│
+├── main.py
+└── mathpack/
+    ├── add.py
+    └── mul.py
+```
+
+### mathpack/add.py
+
+```python
+def add(a, b):
+    return a + b
+```
+
+### mathpack/mul.py
+
+```python
+def multiply(a, b):
+    return a * b
+```
+
+### main.py
+
+```python
+from mathpack.add import add
+from mathpack.mul import multiply
+
+print("Add:", add(5, 3))
+print("Multiply:", multiply(5, 3))
+```
+
+### ▶️ Run
+
+```
+cd project_without_init
+python main.py
+```
+
+Output:
+
+```
+Add: 8
+Multiply: 15
+```
+
+## 🎯 So what changed?
+
+Nothing in runtime behavior for this simple case.
+The only difference is **package type**:
+
+| Folder type              | What Python calls it |
+| ------------------------ | -------------------- |
+| With empty `__init__.py` | Regular package      |
+| Without it               | Namespace package    |
+
+---
+# Python Script Mode vs Package Mode
+
+In Python, code can run in script mode (directly via a file path) or package mode (via python -m). Script mode treats the file as standalone, often breaking absolute imports, while package mode respects the package structure, sets sys.path correctly, and allows imports to work as intended. Using package mode is essential when running code inside a package.
+
+> You will master **script mode** (directly via a file path) and **package mode** (via `python -m`).
+
+## Example:
+
+Your working directory:
+
+```
+python07/
+└── ex0/
+    ├── __init__.py
+    ├── main.py
+    └── CreatureCard.py
+```
+
+Your import inside `main.py`:
+
+```python
+from ex0.CreatureCard import CreatureCard
+```
+
+This is an **absolute import** that requires Python to see `python07` as the project root.
+
+---
+
+## 1️⃣ Why this failed
+
+```
+python ex0/main.py
+```
+
+### What Python does internally
+
+When you run a script by path, Python sets:
+
+```
+sys.path[0] = folder containing the script
+```
+
+So Python sets:
+
+```
+sys.path[0] = python07/ex0
+```
+
+Python now searches for packages relative to **ex0**, not the project root.
+
+So when this line runs:
+
+```python
+from ex0.CreatureCard import CreatureCard
+```
+
+Python looks for:
+
+```
+python07/ex0/ex0/CreatureCard.py
+```
+
+It expects another `ex0` folder inside `ex0`.
+
+Which obviously doesn’t exist → 💥
+
+Error:
+
+```
+ModuleNotFoundError: No module named 'ex0'
+```
+
+### Root cause
+
+Running a file directly removes it from its package context.
+
+Your file became a **standalone script**, not part of the package.
+
+---
+
+## 2️⃣ Why this failed
+
+```
+python -m ex0/main.py
+```
+
+This mixes **two incompatible syntaxes**.
+
+`-m` expects a **module name**, not a file path.
+
+You gave:
+
+```
+ex0/main.py  ❌ filesystem path
+```
+
+Python tried to interpret it as a module:
+
+```
+ex0/main.py  → module name "ex0/main.py"
+```
+
+But module names:
+
+* use dots `.`
+* never use `/`
+* never include `.py`
+
+So Python complains:
+
+```
+Try using 'ex0/main' instead of 'ex0/main.py'
+```
+
+---
+
+## 3️⃣ Why this failed
+
+```
+python ex0.main
+```
+
+Here you forgot `-m`.
+
+Without `-m`, Python assumes you’re giving a **file path**.
+
+It literally tries to open a file named:
+
+```
+ex0.main
+```
+
+It searches for:
+
+```
+python07/ex0.main
+```
+
+That file does not exist → 💥
+
+Error:
+
+```
+can't open file 'ex0.main'
+```
+
+---
+
+## 4️⃣ Why this worked ✅
+
+```
+python -m ex0.main
+```
+
+This is the **correct combination**:
+
+* `-m` → run as module
+* `ex0.main` → module path
+
+### What Python sets now
+
+When using `-m`, Python sets:
+
+```
+sys.path[0] = current working directory
+```
+
+Your working directory:
+
+```
+python07/
+```
+
+So Python searches from the project root and finds:
+
+```
+python07/ex0/__init__.py
+python07/ex0/main.py
+python07/ex0/CreatureCard.py
+```
+
+Then it executes as if Python did:
+
+```python
+import ex0.main
+```
+
+Now your import works perfectly:
+
+```python
+from ex0.CreatureCard import CreatureCard
+```
+
+Because Python can finally see the package root.
+
+---
+
+# 🔥 The real lesson
+
+Running a file directly:
+
+```
+python ex0/main.py
+```
+
+👉 **Filesystem execution**
+
+Running with `-m`:
+
+```
+python -m ex0.main
+```
+
+👉 **Import system execution**
+
+And your code uses **import system semantics**, so only the last command matches.
+
+# 🧠 Final mental rule
+
+If your code imports using the package name:
+
+```python
+from ex0.something import X
+```
+
+You must run it as a module:
+
+```
+python -m ex0.main
+```
 
 ---
 # Protocol
