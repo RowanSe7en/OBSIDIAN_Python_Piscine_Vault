@@ -2973,3 +2973,1098 @@ AttributeError: 'int' object has no attribute 'read'. Did you mean: 'real'?
 one.py:20: error: Argument 1 to "process" has incompatible type "int"; expected "Reader"  [arg-type]
 Found 1 error in 1 file (checked 1 source file)
 ```
+
+# Virtual environment
+
+A **virtual environment** in Python is an **isolated workspace** that contains its own Python interpreter and installed packages, separate from the system Python and other projects.
+
+Think of it as a **self-contained mini Python installation per project**.
+## Why virtual environments exist
+
+Without a virtual environment:
+
+* All packages install globally on your computer.
+* Different projects may need **different versions of the same library**.
+* Updating one project can **break another**.
+
+Example problem:
+
+* Project A needs `Django 3.2`
+* Project B needs `Django 5`
+* Global Python cannot safely satisfy both.
+
+A virtual environment solves this by isolating dependencies.
+
+## What a virtual environment contains
+
+When you create one, Python copies or links:
+
+* A Python interpreter
+* A private `site-packages` directory
+* Package manager (`pip`)
+* Activation scripts
+
+Typical structure:
+
+```
+my_project/
+│
+├── venv/
+│   ├── bin/ (Linux/macOS)
+│   ├── Scripts/ (Windows)
+│   ├── lib/pythonX/site-packages/
+│   └── pyvenv.cfg
+│
+└── app.py
+```
+
+Everything installed with `pip` while the environment is active goes into that `venv` folder.
+
+## How it works conceptually
+
+When you **activate** a virtual environment:
+
+* Your terminal’s PATH changes.
+* `python` and `pip` now point to the environment’s interpreter.
+* Installs stay local to that project.
+
+Deactivate → system Python is restored.
+
+## Why this is critical in real projects
+
+Virtual environments enable:
+
+* Reproducibility (others can recreate your setup)
+* Dependency isolation
+* Clean project structure
+* Safe upgrades and experimentation
+* Deployment consistency
+
+This is standard practice in **data engineering, web development, ML, and DevOps**.
+
+---
+
+Here is a **complete minimal project** showing how a virtual environment fits into a real Python project. This is the simplest “professional-style” layout.
+
+# Step 0 — Project goal
+
+We’ll build a tiny app that:
+
+* Uses an external library (`requests`)
+* Runs inside a virtual environment
+* Can be recreated by someone else using `requirements.txt`
+
+**Explanation**
+
+This is the real purpose of virtual environments:
+You want a project that works the same on **your computer**, **your teammate’s computer**, and **a server**.
+This is called **reproducibility**.
+
+---
+
+# Step 1 — Create the project folder
+
+```bash
+mkdir hello_venv_project
+cd hello_venv_project
+```
+
+Project is empty now.
+
+**Explanation**
+
+* `mkdir hello_venv_project` → creates a new directory for the project.
+* `cd hello_venv_project` → moves your terminal into that folder.
+
+We always isolate projects in their own directory so their files don’t mix.
+
+---
+
+# Step 2 — Create the virtual environment
+
+```bash
+python3 -m venv venv
+```
+
+Now your folder looks like:
+
+```
+hello_venv_project/
+└── venv/
+```
+
+The `venv/` folder is the isolated Python installation.
+
+**Explanation**
+
+This command tells Python:
+
+> “Create a mini Python installation inside a folder named `venv`.”
+
+Inside that folder Python creates:
+
+* its own interpreter
+* its own pip
+* its own site-packages directory
+
+From now on, anything installed will stay **inside this folder only**.
+
+---
+
+# Step 3 — Activate the environment
+
+Linux / macOS:
+
+```bash
+source venv/bin/activate
+```
+
+Windows:
+
+```bash
+venv\Scripts\activate
+```
+
+Your terminal becomes:
+
+```
+(venv) user@pc: hello_venv_project$
+```
+
+This means Python is now isolated.
+
+**Explanation**
+
+Activation changes your terminal’s **PATH** so that:
+
+* `python` → points to `venv/bin/python`
+* `pip` → points to `venv/bin/pip`
+
+So when you install packages, they go into the venv instead of the global system.
+
+The `(venv)` in the prompt is just a visual indicator.
+
+---
+
+# Step 4 — Install a package inside the venv
+
+```bash
+pip install requests
+```
+
+This installs **only inside venv**, not globally.
+
+**Explanation**
+
+`requests` is an external library not included in Python.
+
+Because the venv is active:
+
+* pip installs it into `venv/lib/pythonX/site-packages/`
+* your system Python stays clean.
+
+This is the core benefit of isolation.
+
+---
+
+# Step 5 — Create the application files
+
+Create this structure:
+
+```
+hello_venv_project/
+│
+├── venv/
+├── app/
+│   ├── __init__.py
+│   └── main.py
+├── requirements.txt
+└── README.md
+```
+
+**Explanation**
+
+We separate **environment** from **code**.
+
+* `venv/` → the Python environment
+* `app/` → your actual program
+* `requirements.txt` → dependency list
+* `README.md` → instructions for humans
+
+This separation is standard in real projects.
+
+---
+
+## File 1 — app/main.py
+
+```python
+import requests
+
+def get_quote():
+    url = "https://api.quotable.io/random"
+    response = requests.get(url, timeout=5)
+    data = response.json()
+    return f"{data['content']} — {data['author']}"
+
+def main():
+    print("Fetching a random quote...")
+    quote = get_quote()
+    print(quote)
+
+if __name__ == "__main__":
+    main()
+```
+
+**Explanation**
+
+This file is the application.
+
+Key points:
+
+* We import `requests` → proves external packages work.
+* The app calls a public API → demonstrates real dependency usage.
+* `if __name__ == "__main__":` → makes the file executable as a script.
+
+---
+
+## File 2 — app/**init**.py
+
+Empty file (marks folder as Python package)
+
+```python
+# empty
+```
+
+**Explanation**
+
+This tells Python:
+
+> “The `app` folder is a package.”
+
+It enables future imports like:
+
+```python
+from app.main import get_quote
+```
+
+Even if empty, it’s important in real projects.
+
+---
+
+## File 3 — requirements.txt
+
+Generate automatically:
+
+```bash
+pip freeze > requirements.txt
+```
+
+It will contain something like:
+
+```
+requests==2.31.0
+certifi==2024.2.2
+charset-normalizer==3.3.2
+idna==3.6
+urllib3==2.2.1
+```
+
+This file is **critical** for reproducibility.
+
+**Explanation**
+
+`pip freeze` lists **every installed dependency with exact versions**.
+
+This is what makes environments reproducible:
+Someone else can install the exact same versions.
+
+---
+
+## File 4 — README.md
+
+```markdown
+
+#Hello Venv Project
+
+Small example showing how to use Python virtual environments.
+
+##Setup
+
+Create venv:
+python3 -m venv venv
+
+Activate:
+source venv/bin/activate
+
+Install dependencies:
+pip install -r requirements.txt
+
+Run app:
+python app/main.py
+```
+
+**Explanation**
+
+README files explain:
+
+* how to install the project
+* how to run it
+
+In real life, this is essential for teammates and future you.
+
+---
+
+# Step 6 — Run the project
+
+```bash
+python app/main.py
+```
+
+Output example:
+
+```
+Fetching a random quote...
+Life is really simple, but we insist on making it complicated — Confucius
+```
+
+**Explanation**
+
+Because the venv is active:
+
+* Python finds the `requests` package inside the venv.
+* The program runs successfully.
+
+Without the venv, this could fail on another machine.
+
+---
+
+# Step 7 — What happens on another computer (important)
+
+Someone cloning your project does:
+
+```bash
+git clone <repo>
+cd hello_venv_project
+
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python app/main.py
+```
+
+They get **the exact same environment**.
+
+**Explanation**
+
+This is the entire reason virtual environments exist:
+The environment is **recreated from instructions**, not shared as files.
+
+---
+
+# Step 8 — What NOT to commit
+
+Create `.gitignore`:
+
+```
+venv/
+__pycache__/
+```
+
+We never commit the venv folder because it can be recreated.
+
+**Explanation**
+
+The venv can be hundreds of MB and is machine-specific.
+We only commit the **instructions to rebuild it**.
+
+---
+
+# Final project tree
+
+```
+hello_venv_project/
+│
+├── venv/              (not committed)
+├── app/
+│   ├── __init__.py
+│   └── main.py
+├── requirements.txt
+├── README.md
+└── .gitignore
+```
+
+
+This is the canonical beginner → professional workflow.
+
+If you want, next we can upgrade this into a **real package with pyproject.toml**, which is the modern standard.
+
+There are several reliable ways to verify whether your shell is currently using a virtual environment.
+
+---
+# Check if you’re in a virtual environment
+
+## **1) Check which Python executable is being used (most reliable)**
+
+### Linux / macOS
+
+```bash
+which python
+```
+
+### Windows
+
+```bash
+where python
+```
+
+If you are inside the venv, the path will point to the project:
+
+Example:
+
+```
+/home/user/hello_venv_project/venv/bin/python
+```
+
+If you are NOT in a venv, you’ll see something like:
+
+```
+/usr/bin/python
+```
+
+This is the **best verification method**.
+
+---
+
+## **2) Check environment variable (quick check)**
+
+Linux / macOS:
+
+```bash
+echo $VIRTUAL_ENV
+```
+
+Windows:
+
+```bash
+echo %VIRTUAL_ENV%
+```
+
+If active → prints path to venv
+If empty → no virtual environment active.
+
+---
+
+## **3) Programmatic check inside Python code**
+
+When Python runs inside a virtual environment:
+
+* `sys.prefix` → points to the virtual environment
+* `sys.base_prefix` → points to the global/system Python
+
+So we just compare them.
+
+---
+
+## Minimal check
+
+```python
+import sys
+
+if sys.prefix != sys.base_prefix:
+    print("Running inside a virtual environment")
+else:
+    print("Running in system Python")
+```
+
+---
+
+## Why this works
+
+Python keeps two installation paths:
+
+| Variable          | Meaning                      |
+| ----------------- | ---------------------------- |
+| `sys.base_prefix` | Original Python installation |
+| `sys.prefix`      | Current active environment   |
+
+Inside a venv:
+
+```
+sys.base_prefix = /usr
+sys.prefix      = /home/user/project/venv
+```
+
+Outside a venv:
+
+```
+sys.base_prefix = /usr
+sys.prefix      = /usr
+```
+
+So if they differ → you are in a venv.
+
+This is the **official recommended detection method**.
+
+---
+
+Here’s a **clean table** with **Command / Code**, **Purpose**, and **Example Output**.
+
+| Command / Code                                          | Purpose                         | Example Output                                                                     |
+| ------------------------------------------------------- | ------------------------------- | ---------------------------------------------------------------------------------- |
+| `python3 -m venv venv`                                  | Create virtual environment      | *(no output)*                                                                      |
+| `source venv/bin/activate`                              | Activate venv (Linux/macOS)     | `(venv) user@pc: hello_venv_project$`                                              |
+| `deactivate`                                            | Deactivate venv                 | Prompt returns to normal: `user@pc: hello_venv_project$`                           |
+| `pip install requests`                                  | Install a package in venv       | `Collecting requests ... Successfully installed requests-2.31.0`                   |
+| `pip freeze`                                            | List installed packages         | `requests==2.31.0` <br> `urllib3==2.2.1`                                           |
+| `pip install -r requirements.txt`                       | Recreate environment from file  | `Installing collected packages: requests, ...`                                     |
+| `import sys; print(sys.executable)`                     | Show running Python interpreter | `/home/user/project/venv/bin/python`                                               |
+| `import sys; print(sys.prefix)`                         | Current Python environment path | `/home/user/project/venv`                                                          |
+| `import sys; print(sys.base_prefix)`                    | Original/system Python path     | `/usr`                                                                             |
+| `import sys; print(sys.prefix != sys.base_prefix)`      | Check if inside venv            | `True` → inside venv <br> `False` → system Python                                  |
+| `import site; print(site.getsitepackages())`            | List global site-packages dirs  | `['/usr/lib/python3.13/site-packages', '/usr/local/lib/python3.13/site-packages']` |
+| `import os; print(os.path.basename("/pathto/main.py"))` | Get last part of path           | `main.py`                                                                          |
+
+## **`site` module**
+
+In Python, the **`site` module** is a **standard library module** that handles **site-specific configuration** for the Python environment. Its main role is to **manage and locate package directories** when Python starts. Essentially, it acts as a **helper for package paths** — it tells Python where to find installed modules and provides tools to **inspect, add, or customize those locations**.
+
+## **`os` module**
+
+In Python, the **`os` module** is a **standard library module** that provides a way to **interact with the operating system**. It lets you **work with files, directories, paths, environment variables, and system commands** in a platform-independent way. Essentially, it acts as a **bridge between Python and your OS**, enabling your programs to perform tasks like navigating the filesystem, reading/writing files, and managing processes.
+
+> A Python **virtual environment (venv)** works **per shell session (terminal) once activated**, not “globally” for the whole system or permanently in a directory.
+
+---
+
+# How to install a package (`Pandas` for example)
+
+To install **pandas**, you use **`pip`**, Python’s package manager. Here’s the proper way depending on whether you are in a virtual environment or not.
+
+### 1️⃣ If you are **inside a virtual environment** (recommended)
+
+Activate your venv first:
+
+**Linux/macOS:**
+
+```bash
+source venv/bin/activate
+```
+
+Then install pandas:
+
+```bash
+pip install pandas
+```
+
+### 2️⃣ If you are **using system Python**
+
+```bash
+pip install --user pandas
+```
+
+> The `--user` flag installs it for your user account only, avoiding the need for admin rights.
+
+### 3️⃣ Optional: Install a specific version
+
+```bash
+pip install pandas==2.0.3
+```
+
+### Exact location
+
+Packages go into the venv’s **site-packages** directory:
+
+```
+venv/lib/pythonX.Y/site-packages/
+```
+
+So your pandas files will be here:
+
+```
+venv/
+└── lib/
+    └── python3.13/
+        └── site-packages/
+            ├── pandas/
+            ├── pandas-*.dist-info/
+            ├── numpy/
+            └── ...
+```
+
+That folder is the **local package storage** for that environment.
+
+---
+# What is Pandas
+
+In Python, **`pandas`** is a **popular open-source library** used for **data manipulation and analysis**. It provides **easy-to-use data structures** and functions to handle **tabular data** (like spreadsheets or SQL tables).
+
+### Key features of `pandas`:
+
+1. **Data structures**
+
+   * `DataFrame` → 2D table with rows and columns
+   * `Series` → 1D labeled array
+
+2. **Data manipulation**
+
+   * Filtering, sorting, grouping, merging, reshaping
+   * Handling missing data
+   * Applying functions to data
+
+3. **Data input/output**
+
+   * Read/write CSV, Excel, JSON, SQL, and more
+
+4. **Integration**
+
+   * Works well with **NumPy**, **Matplotlib**, and **scikit-learn** for analytics, plotting, and machine learning
+
+### Example
+
+Here’s a **simple example of `pandas.DataFrame`**:
+
+```python
+import pandas as pd
+
+# Create a simple DataFrame
+data = {'Name': ['Alice', 'Bob'], 'Age': [25, 30]}
+df = pd.DataFrame(data)
+
+print(df)
+```
+
+**Output:**
+
+```
+    Name  Age
+0  Alice   25
+1    Bob   30
+```
+
+Here’s a **simple example of `pandas.Series`**:
+
+```python
+import pandas as pd
+
+# Create a Series
+ages = pd.Series([25, 30, 22, 28], index=['Alice', 'Bob', 'Charlie', 'Diana'])
+
+# Print the Series
+print(ages)
+```
+
+**Output:**
+
+```
+Alice      25
+Bob        30
+Charlie    22
+Diana      28
+dtype: int64
+```
+
+### Explanation:
+
+* `pd.Series(data, index=...)` creates a **1-dimensional labeled array**.
+* **Data:** `[25, 30, 22, 28]` → values of the Series
+* **Index:** `['Alice', 'Bob', 'Charlie', 'Diana']` → labels for each value
+* You can access values by **label** or **position**:
+
+```python
+print(ages['Bob'])   # 30
+print(ages[2])       # 22
+```
+
+**Here’s a table for most useful pandas functions:**
+
+| Example                                  | What it does                                                  |
+| ---------------------------------------- | ------------------------------------------------------------- |
+| `df = pd.read_csv("data.csv")`           | Load a CSV file into a DataFrame                              |
+| `df.head()`                              | Show first 5 rows (quick preview)                             |
+| `df.info()`                              | Summary of DataFrame: columns, types, missing values          |
+| `df.shape`                               | Get number of rows and columns                                |
+| `df["age"]`                              | Select a single column by name                                |
+| `df.loc[df["age"] > 18]`                 | Select/filter rows by label or condition                      |
+| `df.sort_values("age", ascending=False)` | Sort DataFrame by a column                                    |
+| `df.to_csv("output.csv", index=False)`   | Save DataFrame to CSV file                                    |
+
+---
+
+# NumPy
+
+In Python, **`NumPy`** (short for *Numerical Python*) is a **powerful library for numerical computing**. It provides:
+
+1. **`ndarray`** → a fast, multi-dimensional array for numbers.
+2. **Mathematical functions** → vectorized operations, linear algebra, statistics, etc.
+3. **Integration** → works with **pandas**, **Matplotlib**, and machine learning libraries like **scikit-learn**.
+
+### Why it’s useful
+
+* **Fast calculations** on large datasets (faster than regular Python lists)
+* **Memory efficient** storage of numbers
+* **Vectorized operations**: do math on arrays without loops
+
+### Example
+
+```python
+import numpy as np
+
+# Create an array
+arr = np.array([1, 2, 3, 4])
+
+# Add 5 to all elements
+arr = arr + 5
+
+print(arr)
+```
+
+**Output:**
+
+```python
+[6 7 8 9]
+```
+
+✅ Here, the addition was applied **to the whole array at once**, which is much faster than using a Python list with a loop.
+
+**Here’s a table for most usefull NumPy functions:**
+
+| Example / Function                            | What it does                                   | Example Output                       |
+| --------------------------------------------- | ---------------------------------------------- | ------------------------------------ |
+| `np.array([1,2,3])`                           | Create a NumPy array                           | `[1 2 3]`                            |
+| `np.arange(0, 10, 2)`                         | Create an array with evenly spaced values      | `[0 2 4 6 8]`                        |
+| `np.zeros((3,3))`                             | Create a 3x3 array of zeros                    | `[[0. 0. 0.] [0. 0. 0.] [0. 0. 0.]]` |
+| `np.ones((2,4))`                              | Create a 2x4 array of ones                     | `[[1. 1. 1. 1.] [1. 1. 1. 1.]]`      |
+| `np.linspace(0, 1, 5)`                        | Create 5 evenly spaced numbers between 0 and 1 | `[0.   0.25 0.5  0.75 1. ]`          |
+| `np.eye(3)`                                   | Create a 3x3 identity matrix                   | `[[1. 0. 0.] [0. 1. 0.] [0. 0. 1.]]` |
+| `np.reshape(np.arange(6), (2,3))`             | Reshape an array into a new shape              | `[[0 1 2] [3 4 5]]`                  |
+| `np.mean(np.array([1,2,3,4]))`                | Calculate the mean of an array                 | `2.5`                                |
+| `np.sum(np.array([[1,2,3],[4,5,6]]), axis=0)` | Sum array elements along axis 0 (columns)      | `[5 7 9]`                            |
+|                                               |                                                |                                      |
+
+---
+# Matplotlib
+
+In Python, **`Matplotlib`** is a **popular plotting library** used to **create static, animated, and interactive visualizations**. It’s especially useful for data analysis and scientific computing.
+
+### Key Points
+
+1. **Main module** → `matplotlib.pyplot` (commonly imported as `plt`)
+
+   * Provides functions similar to MATLAB for plotting
+
+2. **Types of plots**
+
+   * Line plots, scatter plots, bar charts, histograms, pie charts, etc.
+
+3. **Integration**
+
+   * Works well with **NumPy** and **pandas** data
+   * Often used alongside **Seaborn** for advanced statistical plots
+
+### Example
+
+```python id="6k7ovw"
+import matplotlib.pyplot as plt
+
+# Sample data
+x = [1, 2, 3, 4, 5]
+y = [2, 3, 5, 7, 11]
+
+# Create a line plot
+plt.plot(x, y)
+plt.title("Simple Line Plot")
+plt.xlabel("X-axis")
+plt.ylabel("Y-axis")
+plt.show()
+```
+
+**Output:**
+
+* A line graph connecting points `(1,2)`, `(2,3)`, `(3,5)`, `(4,7)`, `(5,11)`
+* Labeled axes and a title
+
+**Here’s a table for most useful pandas functions:**
+
+| Example / Code                             | What it does                                       |
+| ------------------------------------------ | -------------------------------------------------- |
+| `plt.figure()`                             | Create a new figure / plotting canvas              |
+| `plt.scatter(data["x"], data["y"], s=20)`  | Create a scatter plot with point size = 20         |
+| `plt.plot(x, y)`                           | Create a line plot connecting points               |
+| `plt.title("Random Points Visualization")` | Set the title of the plot                          |
+| `plt.xlabel("X values")`                   | Set the label for the X-axis                       |
+| `plt.ylabel("Y values")`                   | Set the label for the Y-axis                       |
+| `plt.show()`                               | Display the figure in a window                     |
+| `plt.savefig("matrix_analysis.png")`       | Save the current figure to a file (PNG, PDF, etc.) |
+| `plt.subplot(rows, cols, index)`           | Create subplots in a single figure                 |
+| `plt.grid(True)`                           | Show grid lines on the plot                        |
+
+---
+# Difference between pip and Poetry
+
+**Pip** is Python’s standard package installer. It installs libraries from PyPI based on what you ask for (like a `requirements.txt` file). It’s simple and works well for small projects, but it **does not manage conflicts or reproducibility automatically**.
+
+**Poetry** is a full dependency and project management tool. It not only installs packages but also **resolves all dependency versions**, ensures **no conflicts**, and creates a reproducible environment with its `poetry.lock` file.
+###  **1- Pip behavior**
+
+* Installs packages in the order you specify or from `requirements.txt`.
+* If two requirements are incompatible (e.g., `numpy>=1.25` and `numpy<1.25`), pip **just fails at install**, showing an error.
+* Pip does **not try to resolve conflicts automatically**; it only reports the problem.
+* If you ignore the conflict and manually override, pip can leave your environment **broken or inconsistent**.
+### **2- Poetry behavior**
+
+* Uses a **dependency resolver**: it analyzes all declared dependencies and their sub-dependencies **before installing anything**.
+* When it detects a conflict, Poetry **stops immediately**, showing a clear message about **which packages caused the conflict**.
+* It will **not partially install anything**, so your environment stays clean.
+* Poetry generates a **`poetry.lock` file** that locks exact versions — this ensures **reproducible installations** on other machines.
+
+
+## Examples:
+
+
+## **1-`requirements.txt` (for pip)**
+
+* Plain text file
+* Each line specifies a package and optionally a version constraint
+
+**Example:**
+
+```text
+numpy>=1.25
+pandas==2.1.0
+matplotlib>=3.8,<4.0
+requests
+```
+
+You install it with:
+
+```bash
+pip install -r requirements.txt
+```
+
+## **2- `pyproject.toml` (for Poetry)**
+
+* TOML file with sections for project metadata and dependencies
+* Supports **version constraints** and more metadata
+
+**Example:**
+
+```toml
+[tool.poetry]
+name = "matrix-loader"
+version = "0.1.0"
+description = "Matrix data analysis"
+authors = ["student"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pandas = "2.1.0"
+matplotlib = ">=3.8,<4.0"
+requests = "*"
+
+```
+
+Install with:
+
+```bash
+poetry install
+```
+
+* Poetry creates a **`poetry.lock`** file with exact versions to **guarantee reproducibility**.
+
+## Examples of conflict:
+
+**Here’s a concise conflict example of each:**
+### **1-`Pip` conflict example**
+
+`requirements.txt`:
+
+```
+numpy>=1.25
+numpy<1.25
+```
+
+**What happens:**
+
+* Pip tries to install in order.
+* Sees conflicting constraints and **fails immediately**, showing an error.
+
+### **2-`Poetry` conflict example**
+
+`pyproject.toml`:
+
+```toml
+[tool.poetry.dependencies]
+numpy = "^1.25"
+
+[tool.poetry.dependencies]
+numpy = "1.10"
+```
+
+**What happens:**
+
+* Poetry analyzes all dependencies **before installing anything**.
+* Detects conflict between `numpy` versions.
+* **Stops cleanly** without installing anything, shows which packages caused the conflict.
+
+---
+
+# What is `.env` file
+
+A **`.env` file** is a simple text file used to store **environment variables** for your project. These variables can be things like **API keys, database URLs, secret tokens, or configuration settings** that you don’t want to hard-code in your Python scripts.
+
+### **Key points about `.env`**
+
+1. **Format** – plain text, `KEY=VALUE` per line:
+
+```text
+API_KEY=123456789abcdef
+DATABASE_URL=postgresql://user:pass@localhost:5432/mydb
+DEBUG=True
+```
+
+2. **Purpose** – separates configuration from code:
+* Keeps sensitive information out of your source code
+* Makes it easier to change settings without touching code
+* Works across different environments (dev, staging, production)
+
+2. **How to use in Python** :
+* usually with the `python-dotenv` library:
+
+3. **Best practice** – add `.env` to `.gitignore`:
+* So you don’t accidentally push secrets to GitHub.
+
+## Analogy
+
+if your code depends on a `.env` file and you **didn’t push it**, anyone cloning your repo **won’t have the environment variables**, so the code will likely **break or raise errors** when it tries to access them.
+
+### **How the person cloning your repo can fix it**
+
+1. **You need to provide a template** for the `.env` file (without real secrets).
+
+Example: `example.env`:
+
+```text
+API_KEY=your_api_key_here
+DATABASE_URL=your_database_url_here
+DEBUG=True
+```
+
+2. **Instructions for the user:**
+
+* Copy the template to `.env`:
+
+```bash
+cp example.env .env
+```
+
+* Fill in real values (like their own API keys, database credentials, etc.).
+
+3. **Run the code** normally:
+
+```bash
+python app/main.py
+```
+
+* The code will now read the `.env` values correctly.
+
+### ✅ **Best practice**
+
+* Never commit real secrets.
+* Always provide a **template** (`example.env` or `.env.example`).
+* Document it in `README.md` so others know to copy it.
+
+---
+
+# Dotenv libary
+
+`dotenv` is a **tool/library that loads environment variables from a `.env` file into your Python program** so your code can use them with `os.getenv()` or `os.environ`.
+
+### **Key points about `dotenv`**
+
+1. **Purpose**
+- Python itself doesn’t automatically read `.env` files.
+- `python-dotenv` makes it easy to **load all the key=value pairs from `.env` into the environment** at runtime.
+
+1. **Installation** (if not already installed)
+
+```bash
+pip install python-dotenv
+```
+
+3. **Usage Example**
+
+```python
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from .env file
+load_dotenv()
+
+API_KEY = os.getenv("API_KEY")
+DEBUG = os.getenv("DEBUG") == "True"
+
+print(API_KEY, DEBUG)
+```
+
+4. **How it works**
+- `load_dotenv()` reads `.env` line by line.
+- Adds each variable to **Python’s environment variables**, so `os.getenv("VAR")` works.
+
+5. **Best practice**
+- Keep `.env` **out of version control** (add to `.gitignore`).
+- Provide a **template file** (`.env.example`) for others.
+
+💡 **Analogy:**
+
+Think of `python-dotenv` as a **mail carrier**: it reads the secret `.env` box and delivers each key/value to your program so it can use it safely.
+
+---
+
+# Python’s environment variables
+
+### **Scenario**
+
+You run this command in the shell:
+
+```bash
+$ MATRIX_MODE=production API_KEY=secret123 python3 oracle.py
+```
+
+Even though the variables are “before the program,” Python can read them automatically.
+
+### **Step by step**
+
+1. **Args passed in shell**
+
+   ```bash
+   MATRIX_MODE=production API_KEY=secret123 python3 oracle.py
+   ```
+
+   → Go directly into **Python’s environment** (`os.environ`) **before the script starts**. Python automatically sees them.
+
+2. **`load_dotenv()` runs**
+
+   ```python
+   from dotenv import load_dotenv
+   load_dotenv()
+   ```
+
+   → Reads variables from a `.env` file and **adds them to `os.environ` only if they don’t already exist**.
+   → **Shell variables are NOT overwritten** unless you pass `load_dotenv(override=True)`.
+
+3. **`config = {k: os.getenv(k) for k in REQUIRED}`**
+
+   → Reads the **current values from `os.environ`**, giving priority to shell variables.
+   → Stores them in a Python dictionary for easy access in your code.
+
+### **Priority**
+
+```text
+Shell variables > .env variables > defaults (if any)
+```
+
+* If a variable exists **both in shell args and `.env`**, the **shell version wins**.
+* If a variable exists **only in `.env`**, that’s what `config` will get.
+* If it’s **in neither**, `os.getenv()` returns `None` (unless you provide a default).
+
+---
