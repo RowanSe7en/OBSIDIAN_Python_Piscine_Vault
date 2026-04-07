@@ -4149,18 +4149,8 @@ class User(BaseModel):
   
 ```python
 data = {"id": "123", "name": "Alice"}
-user = User(**data)
+user = User(id="123", name="Alice")
 print(user)
-```
-
-```
-User(**data)
-```
-
-means:
-
-```
-User(id="123", name="Alice")
 ```
 
 **Output**:
@@ -4190,47 +4180,7 @@ Instead of silent bugs, you get **precise error messages**.
 
 ## Why there is no `__init__`
 
-You don’t write `__init__` because **BaseModel generates one dynamically**.
-### What happens under the hood
-
-When you write:
-
-```python
-
-class User(BaseModel):
-
-id: int
-
-name: str
-
-is_admin: bool = False
-
-```
-
-Pydantic:
-
-1. Reads the type annotations
-2. Builds a model schema
-3. Creates its own `__init__` that:
-
-	* accepts keyword arguments (`**data`)
-	* validates each field
-	* converts types if needed
-	* stores validated values in the instance
-
-The constructor comes from the parent (`BaseModel`), but it is **generated at runtime using metaprogramming**.
-
-## Parsing from JSON / APIs
-
-```python
-
-json_data = '{"id": 1, "name": "Bob"}'
-
-user = User.model_validate_json(json_data)
-
-```
-
-Great for backend services and scripts.
+You don’t write `__init__` because **BaseModel generates one dynamically**. The constructor comes from the parent (`BaseModel`), but it is **generated at runtime using metaprogramming**.
 ## Nested models
 
 
@@ -4412,7 +4362,48 @@ example="Alice"
 Frameworks like FastAPI use this to generate API docs automatically.  
 
 ---
+# What is schema generation?
 
+Pydantic can automatically create a **machine-readable description of your model**, often used for:
+
+- JSON Schema (`OpenAPI`)
+- API validation
+- Documentation
+
+Basically, Pydantic reads your type hints, `Field()` constraints, default values, and validators, and produces a **dictionary that describes the model structure**.
+
+Use the `model_dump_schema()` or `model_json_schema()` (for Pydantic v2) methods on your `BaseModel`.
+
+```python
+from pydantic import BaseModel, Field
+
+class User(BaseModel):
+    id: int = Field(..., gt=0)
+    username: str = Field(..., min_length=3, max_length=50)
+    is_admin: bool = Field(default=False)
+```
+
+```python
+json_schema = User.model_json_schema(indent=2)
+print(json_schema)
+```
+
+**Output (pretty JSON string):**
+
+```json
+{
+  "title": "User",
+  "type": "object",
+  "properties": {
+    "id": {"title": "Id", "type": "integer", "exclusiveMinimum": 0},
+    "username": {"title": "Username", "type": "string", "minLength": 3, "maxLength": 50},
+    "is_admin": {"title": "Is Admin", "type": "boolean", "default": false}
+  },
+  "required": ["id", "username"]
+}
+```
+
+---
 # Dual Representation of Validation Errors in Pydantic
 
 When working with Pydantic, a single validation failure can be represented in two different ways depending on the audience. The same ValidationError object exposes both a human-readable view and a machine-readable structured view of the error.
@@ -4486,3 +4477,241 @@ crew_size
 is just a **pretty rendering** of the structured data.
 
 ---
+
+#  `@field_validator`
+
+`@field_validator` is a **decorator used to write custom validation logic for a specific field** in a Pydantic model.
+
+It lets you run Python code to check or transform a value after (or before) Pydantic parses it.
+
+Think of it as:
+
+> “Run this function whenever this field is validated.”
+
+# Basic example
+
+```python
+from pydantic import BaseModel, field_validator
+
+class User(BaseModel):
+    name: str
+
+    @field_validator("name")
+    def name_cannot_be_blank(cls, value):
+        if value.strip() == "":
+            raise ValueError("Name cannot be empty")
+        return value
+```
+
+Whenever `name` is validated, this function runs automatically.
+
+# Why does it exist?
+
+Because not all validation rules are simple.
+
+Some rules require:
+
+- custom logic
+- business rules
+- transformations
+- checks that Pydantic does not provide by default
+
+That’s what `@field_validator` is for.
+
+# Side-by-side comparison with the `field()`
+
+|Feature|`Field(...)` constraints|`@field_validator`|
+|---|---|---|
+|Type of rule|Built-in|Custom Python logic|
+|Where written|Inside field definition|Decorator function|
+|Runs in Rust engine|Yes|No (runs in Python)|
+|Performance|Very fast|Slightly slower|
+|Complexity supported|Simple constraints|Any logic you want|
+
+---
+
+# `@model_validator`
+
+`@model_validator` is a **Pydantic decorator used to validate the entire model**, not just one field.
+
+If `@field_validator` checks _one attribute_,  
+`@model_validator` checks the **relationship between fields**.
+
+# Why it exists
+
+Some rules require **multiple fields together**.
+
+Examples:
+
+- password == confirm_password
+- start_date < end_date
+- either email or phone must exist    
+- total == sum(items)
+
+A single field validator cannot see the whole picture.
+
+# Basic idea
+
+```python
+@model_validator(mode="after")
+def check_model(cls, model):
+    ...
+```
+
+It runs after all fields have already been parsed and validated.
+
+So inside the validator you get a **fully typed model object**.
+
+# Example: password confirmation
+
+```python
+from pydantic import BaseModel, model_validator
+
+class User(BaseModel):
+    password: str
+    confirm_password: str
+
+    @model_validator(mode="after")
+    def passwords_match(self):
+        if self.password != self.confirm_password:
+            raise ValueError("Passwords do not match")
+        return self
+```
+
+Now this fails:
+
+```python
+User(password="secret", confirm_password="123")
+```
+
+Because the model-level rule is violated.
+
+# When model validators run
+
+Model validation happens in this order:
+
+```text
+1) Raw input
+2) Field parsing + conversion
+3) Field validators
+4) Model validators   ← here
+5) Final model object
+```
+
+So model validators see **final cleaned data**.
+
+# Two modes of model validators
+
+## 1) `mode="after"` (most common)
+
+Runs **after validation**.  
+You receive the **model instance**.
+
+Use this for:
+
+- comparing fields
+- business rules
+- derived checks
+
+Signature:
+
+```python
+@model_validator(mode="after")
+def validate_model(self):
+    return self
+```
+
+
+## 2) `mode="before"`
+
+Runs **before validation**.  
+You receive the **raw input dictionary**.
+
+Use this when you need to:
+
+- modify incoming data
+- merge fields
+- accept alternative input formats
+
+Example:
+
+```python
+@model_validator(mode="before")
+def preprocess(cls, data):
+    if "full_name" in data:
+        first, last = data["full_name"].split()
+        data["first_name"] = first
+        data["last_name"] = last
+    return data
+```
+
+This runs **before any field parsing happens**.
+
+# field_validator vs model_validator
+
+|Feature|field_validator|model_validator|
+|---|---|---|
+|Sees one field|✓|✗|
+|Sees entire model|✗|✓|
+|Used for relationships|✗|✓|
+|Can modify raw input|✗|✓ (before mode)|
+# Mental model
+
+- `@field_validator` → validate a value
+    
+- `@model_validator` → validate the object
+
+You **cannot (and should not) call a `@model_validator` yourself**, even it is technically callable.
+Even though it looks like a normal method, Pydantic registers it as a **validation hook** during class creation. It is executed **automatically inside the model validation pipeline** when you create or validate a model (e.g., `User(**data)` or `User.model_validate(data)`).
+
+Here’s a **simple example showing what it would look like if you tried to call a `@model_validator` manually** — and why that’s not how it’s meant to be used.
+
+### Model with a `@model_validator`
+
+```python
+from pydantic import BaseModel, model_validator
+
+class User(BaseModel):
+    username: str
+    password: str
+
+    @model_validator(mode="after")
+    def check_password_length(self):
+        if len(self.password) < 8:
+            raise ValueError("Password too short")
+        return self
+```
+
+### Normal (correct) usage — Pydantic calls it automatically
+
+```python
+user = User(username="neo", password="12345678")
+print(user)
+```
+
+Flow:
+
+```
+User(...)
+  → validation starts
+  → model_validator runs automatically
+  → object created
+```
+
+### Manually calling the validator (NOT recommended)
+
+Because it’s just a method, Python technically lets you call it:
+
+```python
+u = User(username="neo", password="12345678")
+
+# Manually calling the validator
+u.check_password_length()
+```
+
+This works **technically**, but it is wrong conceptually because:
+
+• It runs _outside_ the validation pipeline  
+• It skips parsing and field validation  
+• It can break assumptions Pydantic relies on  
+• It defeats the purpose of validators
