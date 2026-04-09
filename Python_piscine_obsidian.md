@@ -4114,16 +4114,60 @@ User(id="123")  # converts to int
 ### 2) Parsing
 
 ```python
+json_string = '{"id": 1, "username": "Neo", "is_admin": true}'
 User.model_validate_json(json_string)
+```
+
+#### Python dictionaries (most common)
+
+```python
+data = {"id": "123", "name": "Alice"}
+User.model_validate(data)
+```
+
+#### Python objects (ORM / custom classes)
+
+Pydantic can read attributes from objects — this is huge for databases.
+
+```python
+class DbUser:
+    def __init__(self):
+        self.id = 1
+        self.name = "Alice"
+
+db_user = DbUser()
+user = User.model_validate(db_user)
+```
+
+It reads attributes like:
+
+```
+db_user.id
+db_user.name
 ```
 
 ### 3) Serialization
 
 ```python
-user.model_dump()
-user.model_dump_json()
+from pydantic import BaseModel
+
+class User(BaseModel):
+    id: int
+    username: str
+    is_admin: bool = False
+
+user = User(id=1, username="neo")
+
+print(user.model_dump())
+print(user.model_dump_json())
 ```
 
+**Output**:
+
+```text
+{'id': 1, 'username': 'neo', 'is_admin': False}
+{"id":1,"username":"neo","is_admin":false}
+```
 ### 4) Error reporting
 
 Clear `ValidationError` messages.
@@ -4480,7 +4524,7 @@ is just a **pretty rendering** of the structured data.
 
 #  `@field_validator`
 
-`@field_validator` is a **decorator used to write custom validation logic for a specific field** in a Pydantic model.
+`@field_validator` is a **decorator used to write custom validation logic for a specific field** in a Pydantic model. You use `@field_validator` when `Field()` is not enough to express the rule.
 
 It lets you run Python code to check or transform a value after (or before) Pydantic parses it.
 
@@ -4491,19 +4535,27 @@ Think of it as:
 # Basic example
 
 ```python
-from pydantic import BaseModel, field_validator
-
-class User(BaseModel):
-    name: str
-
-    @field_validator("name")
-    def name_cannot_be_blank(cls, value):
-        if value.strip() == "":
-            raise ValueError("Name cannot be empty")
-        return value
+from pydantic import BaseModel, field_validator  
+  
+class User(BaseModel):  
+	username: str  
+	  
+	@field_validator("username")  
+		def must_not_contain_spaces(cls, v):  
+		if " " in v:  
+			raise ValueError("No spaces allowed")  
+		return v
 ```
 
-Whenever `name` is validated, this function runs automatically.
+Transformation (not just validation)
+
+```python
+@field_validator("username")
+def normalize(cls, v):
+    return v.lower().strip()
+```
+
+Whenever `username` is validated, these functions runs automatically.
 
 # Why does it exist?
 
