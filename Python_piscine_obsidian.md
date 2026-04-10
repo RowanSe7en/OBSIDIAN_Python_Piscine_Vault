@@ -4105,27 +4105,35 @@ Pydantic solves this by turning validation into **declarative schemas**.
 
 When you inherit from `BaseModel`, your class automatically gains:
 
-### 1) Validation engine
+### 1) Parsing
 
 ```python
 User(id="123")  # converts to int
 ```
 
-### 2) Parsing
+### 2) Validation engine
 
 ```python
-json_string = '{"id": 1, "username": "Neo", "is_admin": true}'
-User.model_validate_json(json_string)
+username: str = Field(min_length=3)
 ```
 
-#### Python dictionaries (most common)
+### 3) Parsing and validation
+
+Python dictionaries (most common):
 
 ```python
 data = {"id": "123", "name": "Alice"}
 User.model_validate(data)
 ```
 
-#### Python objects (ORM / custom classes)
+Json string:
+
+```python
+json_string = '{"id": 1, "username": "Neo", "is_admin": true}'
+User.model_validate_json(json_string)
+```
+
+Python objects (ORM / custom classes):
 
 Pydantic can read attributes from objects — this is huge for databases.
 
@@ -4145,7 +4153,6 @@ It reads attributes like:
 db_user.id
 db_user.name
 ```
-
 ### 3) Serialization
 
 ```python
@@ -4251,20 +4258,40 @@ Automatically becomes nested objects.
 Very popular feature:
 
 ```python
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
+	
+	model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+	
 	api_key: str
 	debug: bool = False
-
+	db_url: str
+	port: int = 8000
 	settings = Settings()
+
+print(settings.api_key) # super-secret-key
+print(settings.debug) # True (auto-converted from "true")
+print(settings.db_url)
+print(settings.port) # 5000 (overrides default)
+```
+
+**.env**:
+
+```
+API_KEY=super-secret-key
+DEBUG=true
+DB_URL=postgresql://user:password@localhost:5432/app_db
+PORT=5000
 ```
 
 Reads from environment variables automatically:
 
-```env
-API_KEY=secret
-DEBUG=true
+```
+super-secret-key
+True
+postgresql://user:password@localhost:5432/app_db
+5000
 ```
 
 Widely used in backend apps and DevOps tooling.
@@ -4428,7 +4455,7 @@ class User(BaseModel):
 ```
 
 ```python
-json_schema = User.model_json_schema(indent=2)
+json_schema = User.model_json_schema()
 print(json_schema)
 ```
 
@@ -4532,6 +4559,9 @@ Think of it as:
 
 > “Run this function whenever this field is validated.”
 
+for a `@field_validator` It must return the value, Pydantic expects the validated (or transformed) field value back.  If you don’t return it → the field becomes None. 
+
+It should be a class method `(cls)`, Field validators run before the model instance exists, so there is no `self`. That’s why the first parameter is the class: `cls`.
 # Basic example
 
 ```python
@@ -4541,7 +4571,7 @@ class User(BaseModel):
 	username: str  
 	  
 	@field_validator("username")  
-		def must_not_contain_spaces(cls, v):  
+	def must_not_contain_spaces(cls, v):  
 		if " " in v:  
 			raise ValueError("No spaces allowed")  
 		return v
@@ -4589,6 +4619,10 @@ That’s what `@field_validator` is for.
 If `@field_validator` checks _one attribute_,  
 `@model_validator` checks the **relationship between fields**.
 
+`@model_validator(mode="after")` must return self. Because in after mode the model is already created. Pydantic gives you the finished object, lets you check/modify it, and expects you to return the final instance.
+
+Also In before mode `@model_validator(mode="before")` , the model does not exist yet.
+Pydantic gives you the raw input data before parsing and validation happen. So you must return the data that Pydantic should continue validating.
 # Why it exists
 
 Some rules require **multiple fields together**.
@@ -4608,6 +4642,7 @@ A single field validator cannot see the whole picture.
 @model_validator(mode="after")
 def check_model(cls, model):
     ...
+    return self
 ```
 
 It runs after all fields have already been parsed and validated.
