@@ -2685,6 +2685,176 @@ The only difference is **package type**:
 | Without it               | Namespace package    |
 
 ---
+# What is an Enum in Python?
+
+An **Enum (enumeration)** is a class used to represent a **fixed set of named constants**.
+
+It answers this problem:
+
+> “This variable must only be one of a few allowed values.”
+
+Instead of using random numbers or strings, you give them **names**.
+
+## Example Enum
+
+We define a set of allowed contact types:
+
+```python
+from enum import Enum
+
+class ContactType(Enum):
+    telepathic = 2
+    visual = 1
+    physical = 3
+```
+
+This creates a class whose members are **constants**.
+
+Each member has:
+
+* a **name** → the label (`visual`)
+* a **value** → the assigned value (`1`)
+
+## Accessing enum members (3 ways)
+
+Let’s rename your variables to clearer names.
+
+```python
+by_dot = ContactType.visual
+by_name = ContactType['visual']
+by_value = ContactType(1)
+```
+
+All three refer to the **same enum member**.
+
+## Printing name and value
+
+```python
+print(by_dot.name)
+print(by_dot.value)
+
+print(by_name.name)
+print(by_name.value)
+
+print(by_value.name)
+print(by_value.value)
+```
+
+Output:
+
+```
+visual
+1
+visual
+1
+visual
+1
+```
+
+So:
+
+| Expression              | Meaning                 |
+| ----------------------- | ----------------------- |
+| `ContactType.visual`    | access by attribute     |
+| `ContactType['visual']` | access by name string   |
+| `ContactType(1)`        | access by numeric value |
+
+They all resolve to the same enum object.
+
+## Now the string problem (very important)
+
+Look at this enum:
+
+```python
+from enum import Enum
+
+class ContactType(Enum):
+    physical = "physical"
+```
+
+You might expect this to work:
+
+```python
+ContactType.physical == "physical"
+```
+
+But it does **not**.
+
+Result:
+
+```
+False
+```
+
+Why?
+
+Because left side = Enum object
+Right side = string
+
+They are different types.
+
+You must access the value explicitly:
+
+```python
+ContactType.physical.value == "physical"  # True
+```
+
+This becomes annoying when working with:
+
+* user input
+* JSON
+* APIs
+* Pydantic
+## Solution: make the Enum behave like a string
+
+```python
+from enum import Enum
+
+class ContactType(str, Enum):
+    physical = "physical"
+```
+
+Now the enum **inherits from `str`**.
+
+Meaning the enum *is also a string*.
+
+Now this works:
+
+```python
+ContactType.physical == "physical"   # True
+```
+
+Big usability improvement.
+
+## Why this is useful
+
+Without `str`:
+
+```python
+if user_input == ContactType.physical.value:
+```
+
+With `str`:
+
+```python
+if user_input == ContactType.physical:
+```
+
+Cleaner, safer, less boilerplate.
+
+## Final mental model
+
+Enum = named constant set.
+
+Each member has:
+
+* a name → human readable label
+* a value → stored data
+
+`Enum` → symbolic constants
+`str + Enum` → symbolic constants that behave like strings (perfect for APIs and validation)
+
+---
 # Python Script Mode vs Package Mode
 
 In Python, code can run in script mode (directly via a file path) or package mode (via python -m). Script mode treats the file as standalone, often breaking absolute imports, while package mode respects the package structure, sets sys.path correctly, and allows imports to work as intended. Using package mode is essential when running code inside a package.
@@ -4547,6 +4717,12 @@ crew_size
 
 is just a **pretty rendering** of the structured data.
 
+## key idea
+
+Inside Pydantic validators, **your `ValueError` is NOT propagated as a raw `ValueError`.**
+Pydantic **catches it internally** and converts it into a **`ValidationError`**.
+So even though _you raise `ValueError`_, the outside world receives a `ValidationError`.
+
 ---
 
 #  `@field_validator`
@@ -4802,3 +4978,72 @@ This works **technically**, but it is wrong conceptually because:
 • It skips parsing and field validation  
 • It can break assumptions Pydantic relies on  
 • It defeats the purpose of validators
+
+---
+
+# `Callable` VS `callable()`
+
+Two different things here: **`Callable` (type hint)** vs **`callable()` (runtime check)**.
+## 1) From which package should you import `Callable`?
+
+Recommended modern import:
+
+```python
+from typing import Callable
+```
+
+or:
+
+```python
+from collections.abc import Callable
+```
+
+Example:
+
+```python
+from typing import Callable
+#from collections.abc import Callable
+
+def apply_spell(spell: Callable[[str, int], str]) -> str:
+    return spell("orc", 10)
+```
+
+Meaning of the hint:
+
+```
+Callable[[arg_types], return_type]
+```
+
+Example meanings:
+
+|Type hint|Meaning|
+|---|---|
+|`Callable[[], int]`|function taking no args → returns int|
+|`Callable[[int], str]`|takes int → returns str|
+|`Callable[[str, int], bool]`|takes str & int → returns bool|
+
+So `Callable` is purely for **static typing** (mypy, IDE, linters).
+
+It does **nothing at runtime**.
+
+## 2) What is `callable()`?
+
+This is a **built-in function** in Python.
+
+It checks at runtime if an object can be called with `()`.
+
+```python
+callable(object) -> bool
+```
+
+### Examples
+
+```python
+callable(len)          # True (function)
+callable(print)        # True (function)
+callable(lambda x: x)  # True (lambda)
+callable(42)           # False (int)
+callable("hello")      # False (string)
+```
+
+---
