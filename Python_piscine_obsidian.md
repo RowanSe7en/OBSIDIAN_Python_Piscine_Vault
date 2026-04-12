@@ -5047,3 +5047,190 @@ callable("hello")      # False (string)
 ```
 
 ---
+# Closure
+
+A **closure** is a function that keeps the variables from the environment where it was created, so it can use them later even after that environment no longer exists.
+
+In short:
+
+> A closure = function + remembered variables.
+
+## Use your example step-by-step
+
+```python
+def make_multiplier(n):
+    def multiply(x):
+        return x * n
+    return multiply
+```
+
+### What happens when Python runs this?
+
+1. Python defines `make_multiplier`.
+2. Nothing special yet — no closure exists.
+## Step 1 — Create the closure
+
+```python
+double = make_multiplier(2)
+```
+
+Execution flow:
+
+1. `make_multiplier(2)` runs.
+    
+2. Local variable created inside it:
+    
+    ```
+    n = 2
+    ```
+    
+3. Inner function `multiply` is created.
+    
+4. `multiply` **uses `n` from outer scope** → closure is formed.
+    
+5. `make_multiplier` returns `multiply`.
+    
+
+Important:  
+`make_multiplier` is now finished, its stack frame is gone…  
+BUT Python keeps `n = 2` alive because `multiply` still needs it.
+
+So `double` now equals a function that secretly carries `n = 2`.
+## Step 2 — Prove the function remembers
+
+```python
+print(double.__closure__)
+```
+
+Output (shape):
+
+```
+(<cell at 0x...: int object at 0x...>,)
+```
+
+That cell is the “memory backpack”.
+### Extract the stored value
+
+```python
+print(double.__closure__[0].cell_contents)
+```
+
+Output:
+
+```
+2
+```
+
+This proves the function still holds the value from the outer function.
+## Step 3 — Call the closure
+
+```python
+result = double(5)
+print(result)
+```
+
+When this runs:
+
+```
+multiply(5)
+→ return 5 * n
+→ return 5 * 2
+→ 10
+```
+
+Output:
+
+```
+10
+```
+
+Even though `make_multiplier` finished earlier, the value `n = 2` is still available.
+
+That is the closure in action.
+## Why this is powerful
+
+Each call creates a **separate memory**:
+
+```python
+double = make_multiplier(2)
+triple = make_multiplier(3)
+```
+
+Now we have two different closures:
+
+|Function|Remembered value|
+|---|---|
+|`double`|n = 2|
+|`triple`|n = 3|
+
+They share the same code, but carry different hidden state.
+## How to recognize a closure (final checklist)
+
+A closure exists when:
+
+1. A function is defined inside another function ✔
+    
+2. The inner function uses a variable from the outer function ✔
+    
+3. The outer function returns the inner function ✔
+    
+
+All three happen in `make_multiplier`.
+
+---
+# `global` VS `nonlocal`
+
+`global` and `nonlocal` both let a function modify a variable that is **outside its own local scope**.  
+The difference is _where that variable lives_ and _how risky it is to modify it_.
+
+`global` modifies a variable at the **module level** (shared by the whole program).  
+`nonlocal` modifies a variable in the **enclosing function** (private to a closure).
+
+Why projects forbid `global` but allow `nonlocal`:
+
+When you use `global`, you change shared state that _any function anywhere_ can also change. That makes programs harder to reason about, test, and debug because the value can change from many places.
+
+With `nonlocal`, the state stays **inside a small, controlled scope** (the outer function). Only the inner functions of that closure can touch it, so it stays predictable and encapsulated.
+
+Simple example with `global`:
+
+```python
+count = 0
+
+def increment():
+    global count
+    count += 1
+
+increment()
+increment()
+print(count)  # 2
+```
+
+Here `count` belongs to the whole file. Any function could modify it.
+
+Simple example with `nonlocal`:
+
+```python
+def counter():
+    count = 0
+
+    def increment():
+        nonlocal count
+        count += 1
+        return count
+
+    return increment
+
+c = counter()
+print(c())  # 1
+print(c())  # 2
+```
+
+Here `count` is private inside `counter`. Nothing outside can touch it, but the inner function can safely update it.
+
+So the idea is simple:
+
+- `global` changes **shared program state** → risky.
+- `nonlocal` changes **private closure state** → controlled and safe.
+
+---
