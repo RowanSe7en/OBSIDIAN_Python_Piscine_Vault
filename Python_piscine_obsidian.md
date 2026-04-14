@@ -5234,3 +5234,1101 @@ So the idea is simple:
 - `nonlocal` changes **private closure state** → controlled and safe.
 
 ---
+# Functions are first-class citizens
+
+When we say **functions are first-class citizens in Python**, we mean they behave like any other object (like ints, strings, lists, dicts).  
+Anything you can do with normal objects, you can do with functions.
+
+There are 5 main properties.
+## 1) Functions can be assigned to variables
+
+```python
+def greet(name):
+    return f"Hello {name}"
+
+say_hi = greet
+print(say_hi("Ali"))
+```
+
+You didn’t copy the function — you created another reference to the same object.
+
+This proves functions are **values**.
+## 2) Functions can be stored in data structures
+
+```python
+def add(x): return x + 1
+def double(x): return x * 2
+
+operations = [add, double]
+print(operations)  # 6
+```
+
+Functions live inside lists, dicts, tuples, etc.
+## 3) Functions can be passed as arguments
+
+This creates **higher-order functions**.
+
+```python
+def apply(func, value):
+    return func(value)
+
+apply(len, "magic")  # 5
+```
+
+You passed a function just like you’d pass a number.
+## 4) Functions can be returned from functions
+
+```python
+def make_multiplier(n):
+    def multiply(x):
+        return x * n
+    return multiply
+
+double = make_multiplier(2)
+double(10)  # 20
+```
+
+Functions can be **created dynamically** and returned.
+## 5) Functions exist at runtime (they are objects)
+
+You can inspect them:
+
+```python
+print(type(len))
+```
+
+Output:
+
+```
+<class 'builtin_function_or_method'>
+```
+
+Functions have:
+
+- attributes
+- identity
+- memory address
+- can be passed around
+
+They are real objects in memory.
+
+## The big picture
+
+Because functions are first-class objects, Python supports:
+
+- higher-order functions (`map`, `filter`, `sorted`)
+- decorators    
+- callbacks
+- functional programming patterns
+## Short definition to remember
+
+> Functions are first-class citizens because they can be treated like any other value: stored, passed, returned, and manipulated at runtime.
+
+---
+# Functional Programming 
+
+Functional Programming is a programming style where **functions are the main building blocks** and computation is done by **combining and transforming data using functions**, rather than changing program state.
+
+Core idea: instead of telling the computer _how to do steps_, you focus on _what result you want from functions_.
+
+### Key characteristics
+
+**1) Functions are first-class values**  
+You can store them, pass them, and return them.
+
+```python
+def add(a, b):
+    return a + b
+
+operation = add
+print(operation(2, 3))  # 5
+```
+
+**2) Pure functions**  
+A pure function:
+
+- depends only on its inputs
+    
+- has no side effects
+    
+- always returns the same output for the same input
+    
+
+```python
+def square(x):
+    return x * x
+```
+
+No global variables, no printing, no modifying outside data.
+
+**3) Immutability**  
+Instead of changing data, you create new data.
+
+Imperative style:
+
+```python
+numbers = [1,2,3]
+numbers.append(4)  # mutated
+```
+
+Functional style:
+
+```python
+numbers = [1,2,3]
+new_numbers = numbers + [4]  # new list
+```
+
+**4) Higher-order functions**  
+Functions that take or return other functions.
+
+Examples in Python:
+
+```python
+map()
+filter()
+sorted()
+```
+
+```python
+nums = [1,2,3,4]
+squared = list(map(lambda x: x*x, nums))
+```
+
+**5) Function composition**  
+Building complex behavior by combining small functions.
+
+```python
+def double(x): return x*2
+def add3(x): return x+3
+
+result = add3(double(5))  # 13
+```
+### Simple mental model
+
+Imperative programming:
+
+> Do this, then this, then change that.
+
+Functional programming:
+
+> Transform this data into new data using functions.
+
+---
+# Decorator
+
+A decorator is a function that takes another function, adds behavior to it, and returns a new function. The original function’s code stays the same, but what happens when you call it changes.
+
+## Start **without** the `@` syntax:
+
+```python
+def outerfunc(func):
+    def innerfunc():
+        print("Before")
+        func()
+        print("After")
+    return innerfunc
+
+def great():
+    print("Hello")
+
+say_hi = outerfunc(great)
+say_hi()
+```
+
+What happens here:
+
+1. `great` is created normally.
+    
+2. We pass that function into `outerfunc`.
+    
+3. Inside the decorator, a new function called `innerfunc` is created.
+    
+4. `innerfunc` remembers the original function (`func`) thanks to a closure.
+    
+5. The decorator returns `innerfunc`.
+    
+6. The name `say_hi` now refers to `innerfunc`, not the original function.
+    
+
+So calling `say_hi()` actually calls `innerfunc`, which calls the original function inside it.
+
+That’s why the output becomes:
+
+```
+Before
+Hello
+After
+```
+
+The original function didn’t change, but its behavior did.
+## Now the `@` syntax is just a shortcut.
+
+This:
+
+```python
+@outerfunc
+def great():
+    print("Hello")
+```
+
+is automatically rewritten by Python as:
+
+```python
+def great():
+    print("Hello")
+
+great = outerfunc(great)
+```
+
+So when Python sees `@outerfunc`, it:
+
+1. Creates the function object `great`
+    
+2. Passes it to `outerfunc`
+    
+3. Replaces `great` with whatever the decorator returns
+    
+
+Inside the decorator:
+
+- `func` becomes the original `great`
+    
+- `innerfunc` is created and remembers `func`
+    
+- `innerfunc` is returned
+    
+- `great` now points to `innerfunc`
+    
+
+When you call `great()`:
+
+- You are really calling `innerfunc()`
+    
+- `innerfunc()` runs code before and after the original function
+    
+
+Mental model:
+
+```
+great → innerfunc → original great
+```
+
+A decorator is simply a function that wraps another function to add extra behavior around it.
+## Notice:
+
+A decorator is executed **immediately when Python defines the function**, not when you call it.
+
+It takes the original function, builds an `innerfunc`, and replaces the original name with it.
+
+Simple example:
+
+```python
+def outerfunc(func):
+    def innerfunc():
+        print("Before")
+        func()
+        print("After")
+    return innerfunc
+
+@outerfunc
+def great():
+    print("Hello")
+
+great()
+```
+
+## What happens:
+
+When Python sees `@outerfunc`, it instantly does:
+
+```python
+great = outerfunc(great)
+```
+
+So:
+
+- `outerfunc` runs immediately
+    
+- it creates `innerfunc`
+    
+- `innerfunc` wraps `great`
+    
+- `great` becomes `innerfunc`
+    
+
+Important rule: **a function is not always passed automatically to a decorator.**
+It depends on how the decorator is written.
+
+There is a **different situations**.
+
+When you write Decorator WITH parentheses → function is NOT passed yet:
+
+```python
+@power_validator(50)
+def fireball(power):
+    ...
+```
+
+Python rewrites it in **two steps**:
+
+Step 1 — call the decorator factory:
+
+```python
+decorator_function = power_validator(50)
+```
+
+At this moment:
+
+* Python is only configuring the decorator
+* The function `fireball` does **not exist yet**
+* So nothing can be passed to it
+
+Step 2 — after the function is created:
+
+```python
+def fireball(power):
+    ...
+
+fireball = decorator_function(fireball)
+```
+
+Now the function is finally passed.
+
+## The key idea
+
+If you see:
+
+```
+@decorator
+```
+
+→ function is passed immediately.
+
+If you see:
+
+```
+@decorator(...)
+```
+
+→ first Python calls the decorator,
+then later it passes the function to the returned inner decorator.
+
+---
+# functools
+
+`functools` is a built-in Python module that provides **tools for functional programming**, especially utilities that work with functions.
+
+Short idea:  
+It contains helpers that make working with higher-order functions, decorators, and function composition easier.
+
+### Most important things inside `functools`
+
+**1) `wraps`**  
+Used in decorators to preserve the original function’s metadata.
+
+**2) `partial`**  
+Creates a new function with some arguments already fixed.
+
+```python
+from functools import partial
+
+def power(base, exp):
+    return base ** exp
+
+square = partial(power, exp=2)
+print(square(5))  # 25
+```
+
+You created a new function from another function.
+
+**3) `reduce`**  
+Applies a function repeatedly to combine values.
+
+```python
+from functools import reduce
+
+nums = [1, 2, 3, 4]
+result = reduce(lambda a, b: a + b, nums)
+print(result)  # 10
+```
+
+It reduces a list to one value.
+
+**4) `lru_cache`**  
+Caches function results (memoization) for speed.
+
+```python
+from functools import lru_cache
+
+@lru_cache
+def fib(n):
+    if n < 2:
+        return n
+    return fib(n-1) + fib(n-2)
+```
+
+Very useful for expensive calculations.
+
+---
+# wraps
+
+`wraps` is a helper from `functools` used **inside decorators** to preserve the original function’s metadata.
+
+When you decorate a function, the original function gets replaced by the wrapper.  
+Without `wraps`, Python thinks the wrapper _is_ the function.
+
+### The problem without `wraps`
+
+```python
+def outerfunc(func):
+    def innerfunc():
+        return func()
+    return innerfunc
+
+@outerfunc
+def greet():
+    """Say hello"""
+    print("Hello")
+
+print(greet.__name__)
+print(greet.__doc__)
+```
+
+Output:
+
+```
+innerfunc
+None
+```
+
+Python lost the original function info 😬  
+This breaks debugging, help(), documentation, frameworks, etc.
+### The solution: `functools.wraps`
+
+```python
+from functools import wraps
+
+def outerfunc(func):
+    @wraps(func)
+    def innerfunc():
+        return func()
+    return innerfunc
+```
+
+Now:
+
+```python
+@outerfunc
+def greet():
+    """Say hello"""
+    print("Hello")
+
+print(greet.__name__)
+print(greet.__doc__)
+```
+
+Output:
+
+```
+greet
+Say hello
+```
+
+### What `wraps` copies
+
+It copies metadata from the original function:
+
+- function name (`__name__`)
+    
+- docstring (`__doc__`)
+    
+- module name
+    
+- annotations
+    
+- other metadata
+    
+
+---
+# `partial`
+
+`partial` (from `functools`) lets you **create a new function by fixing some arguments of an existing function**.
+
+Think of it as **pre-filling parameters**.
+
+`partial` is different from default parameters because default values change the original function itself, while `partial` leaves the original function unchanged and creates a new specialized function with some arguments already pre-filled.
+
+### Basic idea
+
+```python
+from functools import partial
+```
+
+Suppose we have:
+
+```python
+def multiply(a, b):
+    return a * b
+```
+
+Create a new function that always multiplies by 2:
+
+```python
+double = partial(multiply, 2)
+
+print(double(5))  # 10
+```
+
+What happened?
+
+```text
+double(x) → multiply(2, x)
+```
+
+We “locked” the first argument. Python matches arguments **from left to right** (positional order).
+
+### Example with named arguments
+
+```python
+def power(base, exp):
+    return base ** exp
+
+square = partial(power, exp=2)
+cube   = partial(power, exp=3)
+
+print(square(4))  # 16
+print(cube(4))    # 64
+```
+
+You created new specialized functions from one generic function.
+
+### Why it’s useful
+
+Without `partial`:
+
+```python
+def square(x):
+    return power(x, 2)
+```
+
+With `partial`:
+
+```python
+square = partial(power, exp=2)
+```
+
+Less code, more reusable.
+
+---
+# `operator`
+
+The `operator` module is a built-in Python module that provides **functions for common operators**.
+
+Instead of writing operators like `+`, `*`, or `==`, it gives you **function versions** of them.
+
+This is useful in functional programming when you need to pass an operation as a function (to `map`, `sorted`, `reduce`, etc.).
+### Example idea
+
+Normally:
+
+```python
+3 + 5
+```
+
+With `operator`:
+
+```python
+from operator import add
+add(3, 5)  # 8
+```
+
+Same operation, but now it’s a function you can pass around.
+### Why it exists
+
+Many functional tools expect a **function**, not an operator symbol.
+
+Example with `reduce`:
+
+```python
+from functools import reduce
+from operator import mul
+
+nums = [1, 2, 3, 4]
+result = reduce(mul, nums)
+print(result)  # 24
+```
+
+Instead of writing a lambda:
+
+```python
+reduce(lambda a, b: a * b, nums)
+```
+
+Cleaner and faster.
+### Very common functions in `operator`
+
+Arithmetic:
+
+```python
+operator.add(a, b)   # a + b
+operator.sub(a, b)   # a - b
+operator.mul(a, b)   # a * b
+operator.truediv(a,b)# a / b
+```
+
+Comparisons:
+
+```python
+operator.eq(a, b)    # a == b
+operator.gt(a, b)    # a > b
+operator.lt(a, b)    # a < b
+```
+
+---
+# `lru_cache`
+
+`lru_cache` is a decorator from `functools` that **caches (stores) the results of a function** so it doesn’t recompute the same input again.
+
+### Basic idea
+
+If you call a function with the same input multiple times, Python normally recalculates it each time.
+
+With `lru_cache`, Python:
+
+- saves the result the first time
+    
+- reuses it next time
+    
+- makes execution much faster
+    
+
+### Example
+
+```python
+from functools import lru_cache
+
+@lru_cache
+def add(x, y):
+    print("computing...")
+    return x + y
+```
+
+Now:
+
+```python
+print(add(2, 3))
+print(add(2, 3))
+```
+
+Output:
+
+```
+computing...
+5
+5
+```
+
+👉 The second call does NOT recompute.
+
+### Why “LRU”?
+
+LRU = **Least Recently Used**
+
+If the cache gets full:
+
+- Python removes the oldest unused results
+    
+- keeps the most recently used ones
+    
+
+### Real use case (classic: Fibonacci)
+
+Without cache (slow):
+
+```python
+def fib(n):
+    if n < 2:
+        return n
+    return fib(n-1) + fib(n-2)
+```
+
+With cache (fast):
+
+```python
+from functools import lru_cache
+
+@lru_cache
+def fib(n):
+    if n < 2:
+        return n
+    return fib(n-1) + fib(n-2)
+```
+
+Now repeated calculations are reused instead of recomputed.
+
+In Fibonacci, the whole point of `lru_cache` is that **many calls reuse values that were already computed before**.
+
+### Fibonacci rule
+
+```text
+fib(n) = fib(n-1) + fib(n-2)
+```
+
+So every value depends on smaller values
+
+### Scenario: computing `fib(5)`
+
+Let’s expand it **without cache first**:
+
+```
+fib(5)
+→ fib(4) + fib(3)
+
+fib(4)
+→ fib(3) + fib(2)
+
+fib(3)
+→ fib(2) + fib(1)
+```
+
+Notice something important:
+
+#### `fib(3)` is computed multiple times
+
+* once in `fib(5)`
+* once in `fib(4)`
+
+#### `fib(2)` is also repeated many times
+
+### Where cached values are reused
+
+Now imagine we use:
+
+```python id="l1c9r2"
+from functools import lru_cache
+
+@lru_cache
+def fib(n):
+    if n < 2:
+        return n
+    return fib(n-1) + fib(n-2)
+```
+
+### Step-by-step reuse scenario
+
+### 1. First time:
+
+```text id="k8p3xv"
+fib(2) → computed → stored
+```
+
+Cache:
+
+```
+{2: 1}
+```
+
+### 2. Later in recursion:
+
+When Python reaches again:
+
+```text id="m3n9qv"
+fib(3)
+→ needs fib(2)
+```
+
+Instead of recomputing:
+
+* it **fetches fib(2) from cache**
+
+### 3. Even bigger reuse:
+
+When computing `fib(5)`:
+
+```text id="w7c2bd"
+fib(5)
+→ fib(4)
+→ fib(3)
+→ fib(2)  ← already computed earlier
+```
+
+So `fib(2)` is reused multiple times instantly.
+
+---
+# `cache_info()`
+
+To verify that caching is working with `lru_cache`, you use:
+
+```python
+memoized_fibonacci.cache_info()
+```
+
+This returns a named tuple showing **how effective the cache is**.
+
+## What `cache_info()` shows
+
+It gives 4 values:
+
+```text
+CacheInfo(hits, misses, maxsize, currsize)
+```
+
+### Meaning of each field
+
+- **hits** → how many times Python reused a cached result
+    
+- **misses** → how many times Python had to compute a new value
+    
+- **maxsize** → maximum cache capacity (None = unlimited)
+    
+- **currsize** → current number of stored cached results
+    
+
+## Example
+
+```python
+from functools import lru_cache
+
+@lru_cache
+def fib(n):
+    if n < 2:
+        return n
+    return fib(n-1) + fib(n-2)
+
+fib(10)
+
+print(fib.cache_info())
+```
+
+## Typical output
+
+```text
+CacheInfo(hits=8, misses=11, maxsize=128, currsize=11)
+```
+
+## How to interpret it
+
+- `misses=11` → 11 unique computations were done
+    
+- `hits=8` → 8 times Python reused already computed values
+    
+- This proves caching is actively working
+    
+
+## How to _prove caching is working_
+
+If caching is effective:
+
+```text
+hits > 0
+```
+
+If caching is NOT working:
+
+```text
+hits = 0
+```
+
+## Extra check (very clear proof)
+
+Call the same function twice:
+
+```python
+fib(20)
+fib(20)
+
+print(fib.cache_info())
+```
+
+Second call increases:
+
+- **hits increases**
+    
+- **misses does NOT increase**
+    
+
+That’s the strongest proof caching is working.
+
+---
+# `singledispatch`
+
+`functools.singledispatch` is a decorator that lets you create a **single function with multiple implementations depending on the type of the first argument**.
+
+This is called **generic function dispatch**.
+
+## Core idea
+
+Instead of writing:
+
+```python
+if type(x) is int:
+    ...
+elif type(x) is str:
+    ...
+```
+
+You write **separate functions per type**, and Python chooses the correct one automatically.
+
+## Basic example
+
+```python
+from functools import singledispatch
+
+@singledispatch
+def process(value):
+    print("Default:", value)
+```
+
+Now we register special behavior for types:
+
+```python
+@process.register(int)
+def _(value):
+    print("Integer:", value * 2)
+
+@process.register(str)
+def _(value):
+    print("String:", value.upper())
+```
+
+## Usage
+
+```python
+process(10)
+process("hello")
+process(3.14)
+```
+
+Output:
+
+```text
+Integer: 20
+String: HELLO
+Default: 3.14
+```
+
+## How it works
+
+When you call:
+
+```python
+process(value)
+```
+
+Python:
+
+1. Looks at the **type of `value`**
+    
+2. Finds the registered function for that type
+    
+3. Executes it
+    
+
+If no match → uses the **default implementation**
+
+## Key rule
+
+Only the **first argument** is used for dispatch.
+
+```python
+process(value, other)
+```
+
+→ dispatch depends only on `value`
+
+---
+# `multipledispatch`
+
+`multipledispatch` is a library that lets you **choose which function to run based on the types of all arguments**, not just the first one.
+
+### Simple idea
+
+> Same function name, different behavior depending on argument types.
+
+### Example with `(str, int)`
+
+```python
+from multipledispatch import dispatch
+
+@dispatch(str, int)
+def process(name, power):
+    return f"{name} boosted by {power} points"
+```
+
+### Usage
+
+```python
+print(process("fire", 10))
+```
+
+Output:
+
+```text
+fire boosted by 10 points
+```
+
+---
+# Why use `*args, **kwargs` with decorators
+### First idea: decorators don’t know the future
+
+When you write a decorator, you should assume it might be used on **any function**, not just the one you are testing with.
+
+Functions can have many possible signatures:
+
+- no parameters
+- positional parameters
+- keyword parameters
+- many parameters
+- methods with `self`
+- any mix of the above
+
+
+Because of this uncertainty, decorators are usually written using:
+
+```python
+*args, **kwargs
+```
+
+This lets the decorator accept **any possible function signature** and forward the arguments safely.
+
+### Why your `spell_timer` works _by coincidence_
+
+Current version:
+
+```python
+def wrapper():
+    result = func()
+```
+
+It works only because it decorates this function:
+
+```python
+def fireball():
+```
+
+which takes **no arguments**.
+
+But imagine you later decorate a function that needs parameters:
+
+```python
+@spell_timer
+def fireball(power):
+    ...
+```
+
+Now Python will try to pass `power` to the wrapper, but the wrapper accepts **no parameters**, so the program crashes with:
+
+```
+TypeError: wrapper() takes 0 positional arguments but 1 was given
+```
+
+### The correct real-world version
+
+A proper decorator must forward _any_ arguments:
+
+```python
+def wrapper(*args, **kwargs):
+    result = func(*args, **kwargs)
+```
+
+This makes the decorator **future-proof and reusable**.
