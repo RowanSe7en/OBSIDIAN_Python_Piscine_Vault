@@ -1,7 +1,6 @@
 
 ---
 # PYTHON PISCINE
-
 ---
 
 # Interpreting in Python
@@ -19,7 +18,7 @@ Interpreting is the process where Python executes code by translating it into in
 
 ---
 
-# 1 - Starting the Python Interpreter (CPython)
+## 1 - Starting the Python Interpreter (CPython)
 
 Before any Python source code is read, the operating system starts the Python interpreter itself, which is the CPython executable. When you run `python3 script.py`, the OS locates the compiled `python3` binary (built from C code using a compiler such as GCC), loads it into memory, sets up the process environment (stack, heap, and CPU registers) like every native program (Python, Chrome, GCC, Bash, etc.), and jumps to its entry point (`main()` in C). CPython then initializes its runtime environment by setting up memory management, the garbage collector, built-in types, the import system, and the Python Virtual Machine (PVM). All of this work is performed in machine code, before any lexing, parsing, or bytecode generation of your `.py` file begins. Only after this initialization phase does CPython read and compile the Python source code.
 
@@ -48,7 +47,7 @@ Before any Python source code is read, the operating system starts the Python in
 
 ---
 
-# 2 - Lexing (Lexical Analysis / Tokenization)
+## 2 - Lexing (Lexical Analysis / Tokenization)
 
 Lexing is the first step in Python's frontend, performed by the Python compiler component inside the CPython interpreter, where the raw source code is converted into a stream of meaningful symbols called **tokens**. It turns the human-readable text into units the parser can understand.
 
@@ -123,7 +122,7 @@ greet("Alice")
 
 ---
 
-# 3 - Parsing (Syntactic Analysis)
+## 3 - Parsing (Syntactic Analysis)
 
 Parsing is the second step in Python's frontend, performed by the Python compiler component inside the CPython interpreter. The stream of tokens from the lexer is analyzed according to Python's grammar rules. The parser checks that the code is structurally correct and builds a hierarchical representation called an **Abstract Syntax Tree (AST)**, which captures the meaning of the program without irrelevant details like whitespace or comments.
 
@@ -171,7 +170,7 @@ Module(
 
 ---
 
-# 4 - Bytecode Generation and Inspection
+## 4 - Bytecode Generation and Inspection
 
 After parsing, Python converts the AST into **bytecode** — a low-level, platform-independent set of instructions that the Python Virtual Machine (PVM) can execute. Bytecode is analogous to assembly code in C, but instead of running directly on the CPU, it runs on Python's virtual machine. The PVM interprets Python bytecode and executes its semantics by invoking precompiled C functions, whose machine instructions are executed directly by the CPU.
 
@@ -221,7 +220,7 @@ Disassembly of <code object greet at 0x7f2cc09375a0, file "test.py", line 4>:
 
 ---
 
-# 5 - Execution by the Python Virtual Machine (PVM)
+## 5 - Execution by the Python Virtual Machine (PVM)
 
 After Python generates bytecode, it does not run directly on your CPU. Instead, the **Python Virtual Machine (PVM)** executes it. The PVM is the interpreter inside Python that reads bytecode instructions one by one and performs the corresponding operations in memory.
 
@@ -267,7 +266,7 @@ When the PVM encounters the `BINARY_ADD` opcode, it invokes a C function that po
 
 ---
 
-# 6 - Generate .pyc Files
+## 6 - Generate .pyc Files
 
 In Python, you can compile a script to bytecode without executing it. This produces a `.pyc` file, which is a cached version of the bytecode. Python uses these files to speed up future executions by loading the precompiled bytecode instead of recompiling the source code each time.
 
@@ -284,7 +283,7 @@ python3 -m py_compile your_file.py
 
 ---
 
-# Python Interpreter Execution Flow
+## Python Interpreter Execution Flow
 
 ```
 ┌─────────────────────────────────────┐
@@ -358,7 +357,7 @@ sys.getsizeof(obj)
 ```
 
 Below are **typical sizes on a 64-bit CPython implementation** (values may vary slightly).
-# Numeric types
+## Numeric types
 
 | Type      | Example | Typical size                |
 | --------- | ------- | --------------------------- |
@@ -372,7 +371,7 @@ Notes:
 * `int` uses **arbitrary precision**, so very large numbers require more memory.
 * `float` follows **IEEE-754 double precision (64 bits)** internally.
 
-# Text type
+## Text type
 
 | Type  | Example | Typical size           |
 | ----- | ------- | ---------------------- |
@@ -387,7 +386,7 @@ sys.getsizeof("a")      # ~50 bytes
 sys.getsizeof("hello")  # larger
 ```
 
-# Container types
+## Container types
 
 | Type    | Example   | Typical size         |
 | ------- | --------- | -------------------- |
@@ -401,14 +400,14 @@ Notes:
 * Containers store **references to objects**, not the objects themselves.
 * Their size grows as elements are added.
 
-# Special types
+## Special types
 
 | Type       | Example     | Typical size |
 | ---------- | ----------- | ------------ |
 | `NoneType` | `None`      | ~16 bytes    |
 | `range`    | `range(10)` | ~48 bytes    |
 
-# Example measurement
+## Example measurement
 
 ```python
 import sys
@@ -457,6 +456,69 @@ range: 48
 ✅ **Key takeaway**
 
 Python objects include **extra memory for metadata**, so they are much larger than primitive types in low-level languages. Sizes are **implementation-dependent** and **can grow dynamically**.
+
+---
+# **`sys` module**
+
+The **`sys` module** is a built-in Python module that lets your program interact with the **Python interpreter and runtime environment**.
+
+Import it with:
+
+```python
+import sys
+```
+
+### Key uses (quick view)
+
+**1) Command-line arguments**
+
+```python
+sys.argv
+```
+
+List of values passed when running the script.
+
+**2) Exit the program**
+
+```python
+sys.exit()
+```
+
+Stops execution immediately.
+
+**3) Standard input/output streams**
+
+```python
+sys.stdin
+sys.stdout
+sys.stderr
+```
+
+Used for CLI tools and logging.
+
+**4) Python runtime info**
+
+```python
+sys.version
+sys.platform
+```
+
+**5) Module search paths**
+
+```python
+sys.path
+```
+
+Where Python looks for imports.
+
+**6) Object memory size**
+
+```python
+sys.getsizeof(obj)
+```
+
+**In one line:**  
+`sys` gives you access to the Python interpreter and how your script runs inside it.
 
 ---
 # Type hints
@@ -719,9 +781,7 @@ two.py starts
 5. Execution returns to `two.py`. `one` is now a reference to that module object.
 6. If imported again: Python does NOT re-run the file. It reuses the existing module object.
 
----
-
-# Module Object Inspection
+## Module Object Inspection
 
 **`t1.py`:**
 
@@ -1276,91 +1336,50 @@ These generators are part of the iteration system defined in the Python iterator
 
 ## 1. Generator Expressions (Comprehension-style)
 
-  
-
 These look like **list comprehensions but with parentheses**.
 
-  
-
 Example:
-
-  
 
 ```python
 gen = (x * x for x in range(5))
 ```
 
-  
-
 This creates a **generator object** that produces values one by one.
-
-  
 
 Equivalent step-by-step use:
 
-  
-
 ```python
-
 print(next(gen)) # 0
-
 print(next(gen)) # 1
-
 print(next(gen)) # 4
-
 ```
-
-  
 
 Key points:
 
-  
-
 * Uses **parentheses `( )`**
-
 * Looks like a comprehension
-
 * No `yield`
-
 * Produces values lazily
-
-  
 
 Comparison:
 
-  
-
 ```python
-
 [x*x for x in range(5)] # list comprehension → builds full list
-
 (x*x for x in range(5)) # generator expression → lazy generator
-
 ```
 
 Memory difference:
 
 ```text
-
 List comprehension → stores all values
-
 Generator expression → produces values when needed
-
 ```
-
-
 
 ## 2. Generator Functions (`yield`)
 
-  
-
 These are **normal functions that use `yield`**.
 
-  
-
 Example:
-
-  
 
 ```python
 def squares(n):
@@ -1368,96 +1387,54 @@ def squares(n):
 		yield i * i
 ```
 
-  
-
 Calling the function **does not run it immediately**:
-
-  
 
 ```python
 gen = squares(5)
 ```
 
-  
-
 Instead it returns a **generator object**.
 
-  
-
 Execution happens when iterated:
-
-  
 
 ```python
 for x in gen:
 	print(x)
 ```
 
-  
-
 Key mechanism:
 
-  
-
 * `yield` **pauses the function**
-
 * State is preserved
-
 * Execution resumes on the next `next()` call
-
 
 ## Execution Model of Generator Functions
 
-  
-
 Normal function:
 
-  
-
 ```text
-
 call → run entire function → return result
-
 ```
-
-  
 
 Generator function:
 
-  
-
 ```text
-
 call → create generator object
-
 next() → run until yield
-
 next() → resume from yield
-
 ```
-
 
 ## Conceptual Equivalence
 
-  
-
 These two are roughly equivalent:
 
-  
-
 Generator expression:
-
-  
 
 ```python
 gen = (x*x for x in range(5))
 ```
 
-  
-
 Generator function:
-
-  
 
 ```python
 def gen():
@@ -1465,13 +1442,9 @@ def gen():
 yield x*x
 ```
 
-  
-
 Both produce a **generator object**.
 
 ## Summary
-
-  
 
 | Feature    | Generator Expression | Generator Function |
 | ---------- | -------------------- | ------------------ |
@@ -1481,22 +1454,14 @@ Both produce a **generator object**.
 | Code size  | Short                | Longer             |
  **Key idea**
 
-  
-
 Both produce **generator objects** implementing the iterator protocol:
-
-  
 
 ```text
 __iter__()
 __next__()
 ```
 
-  
-
 The difference is **syntax and complexity of the logic**.
-
-  
 
 ---
 
@@ -1718,7 +1683,6 @@ next(iterator[, default])
 * `iterator` → an **iterator object**, like a generator or anything with `__next__()`.
 * `default` → optional value returned if the iterator is exhausted (instead of raising `StopIteration`).
 
-
 ## 2. What It Does
 
 * Calls the iterator's `__next__()` method internally.
@@ -1727,7 +1691,6 @@ next(iterator[, default])
 
   * Without `default` → raises `StopIteration`
   * With `default` → returns the `default` value
-
 
 ## 3. Example With a Generator Expression
 
@@ -1740,8 +1703,6 @@ print(next(gen))  # StopIteration
 ```
 
 Here, `next()` **pauses the generator, resumes it, and returns the next value**. When no more values exist, it raises `StopIteration`.
-
-
 
 ## 4. Using Default to Avoid StopIteration and Using `next()` with a List
 
@@ -2015,8 +1976,29 @@ print(all(check(n) for n in [1, 2, -3, 4]))
 ```
 
 ---
+# `any()`
 
-# `.strip()`
+The `any()` function evaluates whether **at least one element** in an iterable is truthy. It returns `True` if any element is considered true in a boolean context, and `False` if all elements are falsy. Falsy values include `False`, `None`, `0`, empty sequences like `[]` or `""`, and empty collections like `{}` or `set()`. If the iterable is empty, `any()` returns `False`.
+
+`any()` has **short-circuit behavior** — evaluation stops as soon as a truthy value is encountered.
+
+```python
+print(any([False, False, True]))     # True
+print(any([False, 0, None]))         # False
+
+nums = [1, 3, 5, 8]
+print(any(n % 2 == 0 for n in nums)) # True
+
+def check(x):
+    print(f"Checking {x}")
+    return x > 0
+
+print(any(check(n) for n in [-1, -2, 3, -4]))
+```
+
+---
+
+# `strip()`
 
 The `.strip()` method removes unwanted characters from the **beginning and end** of a string. By default, it strips all types of whitespace (spaces, tabs, newlines, carriage returns, vertical tabs, form feeds). It can also accept a custom string of characters to remove.
 
@@ -2685,6 +2667,228 @@ The only difference is **package type**:
 | Without it               | Namespace package    |
 
 ---
+# Python Script Mode vs Package Mode
+
+In Python, code can run in script mode (directly via a file path) or package mode (via python -m). Script mode treats the file as standalone, often breaking absolute imports, while package mode respects the package structure, sets sys.path correctly, and allows imports to work as intended. Using package mode is essential when running code inside a package.
+
+> You will master **script mode** (directly via a file path) and **package mode** (via `python -m`).
+
+## Example:
+
+Your working directory:
+
+```
+python07/
+└── ex0/
+    ├── __init__.py
+    ├── main.py
+    └── CreatureCard.py
+```
+
+Your import inside `main.py`:
+
+```python
+from ex0.CreatureCard import CreatureCard
+```
+
+This is an **absolute import** that requires Python to see `python07` as the project root.
+
+## 1️⃣ Why this failed
+
+```
+python ex0/main.py
+```
+
+### What Python does internally
+
+When you run a script by path, Python sets:
+
+```
+sys.path[0] = folder containing the script
+```
+
+So Python sets:
+
+```
+sys.path[0] = python07/ex0
+```
+
+Python now searches for packages relative to **ex0**, not the project root.
+
+So when this line runs:
+
+```python
+from ex0.CreatureCard import CreatureCard
+```
+
+Python looks for:
+
+```
+python07/ex0/ex0/CreatureCard.py
+```
+
+It expects another `ex0` folder inside `ex0`.
+
+Which obviously doesn’t exist → 💥
+
+Error:
+
+```
+ModuleNotFoundError: No module named 'ex0'
+```
+
+### Root cause
+
+Running a file directly removes it from its package context.
+
+Your file became a **standalone script**, not part of the package.
+
+## 2️⃣ Why this failed
+
+```
+python -m ex0/main.py
+```
+
+This mixes **two incompatible syntaxes**.
+
+`-m` expects a **module name**, not a file path.
+
+You gave:
+
+```
+ex0/main.py  ❌ filesystem path
+```
+
+Python tried to interpret it as a module:
+
+```
+ex0/main.py  → module name "ex0/main.py"
+```
+
+But module names:
+
+* use dots `.`
+* never use `/`
+* never include `.py`
+
+So Python complains:
+
+```
+Try using 'ex0/main' instead of 'ex0/main.py'
+```
+
+## 3️⃣ Why this failed
+
+```
+python ex0.main
+```
+
+Here you forgot `-m`.
+
+Without `-m`, Python assumes you’re giving a **file path**.
+
+It literally tries to open a file named:
+
+```
+ex0.main
+```
+
+It searches for:
+
+```
+python07/ex0.main
+```
+
+That file does not exist → 💥
+
+Error:
+
+```
+can't open file 'ex0.main'
+```
+
+## 4️⃣ Why this worked ✅
+
+```
+python -m ex0.main
+```
+
+This is the **correct combination**:
+
+* `-m` → run as module
+* `ex0.main` → module path
+
+### What Python sets now
+
+When using `-m`, Python sets:
+
+```
+sys.path[0] = current working directory
+```
+
+Your working directory:
+
+```
+python07/
+```
+
+So Python searches from the project root and finds:
+
+```
+python07/ex0/__init__.py
+python07/ex0/main.py
+python07/ex0/CreatureCard.py
+```
+
+Then it executes as if Python did:
+
+```python
+import ex0.main
+```
+
+Now your import works perfectly:
+
+```python
+from ex0.CreatureCard import CreatureCard
+```
+
+Because Python can finally see the package root.
+
+## 🔥 The real lesson
+
+Running a file directly:
+
+```
+python ex0/main.py
+```
+
+👉 **Filesystem execution**
+
+Running with `-m`:
+
+```
+python -m ex0.main
+```
+
+👉 **Import system execution**
+
+And your code uses **import system semantics**, so only the last command matches.
+
+## 🧠 Final mental rule
+
+If your code imports using the package name:
+
+```python
+from ex0.something import X
+```
+
+You must run it as a module:
+
+```
+python -m ex0.main
+```
+
+---
 # What is an Enum in Python?
 
 An **Enum (enumeration)** is a class used to represent a **fixed set of named constants**.
@@ -2716,8 +2920,6 @@ Each member has:
 * a **value** → the assigned value (`1`)
 
 ## Accessing enum members (3 ways)
-
-Let’s rename your variables to clearer names.
 
 ```python
 by_dot = ContactType.visual
@@ -2761,7 +2963,7 @@ So:
 
 They all resolve to the same enum object.
 
-## Now the string problem (very important)
+## Now the comparision problem (very important)
 
 Look at this enum:
 
@@ -2831,261 +3033,26 @@ Big usability improvement.
 Without `str`:
 
 ```python
-if user_input == ContactType.physical.value:
+if "physical" == ContactType.physical.value:
 ```
 
 With `str`:
 
 ```python
-if user_input == ContactType.physical:
+if "physical" == ContactType.physical:
 ```
 
-Cleaner, safer, less boilerplate.
+Because it inherits from `str`, Python uses **string comparison** when you do `==`.
 
-## Final mental model
-
-Enum = named constant set.
-
-Each member has:
-
-* a name → human readable label
-* a value → stored data
-
-`Enum` → symbolic constants
-`str + Enum` → symbolic constants that behave like strings (perfect for APIs and validation)
-
----
-# Python Script Mode vs Package Mode
-
-In Python, code can run in script mode (directly via a file path) or package mode (via python -m). Script mode treats the file as standalone, often breaking absolute imports, while package mode respects the package structure, sets sys.path correctly, and allows imports to work as intended. Using package mode is essential when running code inside a package.
-
-> You will master **script mode** (directly via a file path) and **package mode** (via `python -m`).
-
-## Example:
-
-Your working directory:
-
-```
-python07/
-└── ex0/
-    ├── __init__.py
-    ├── main.py
-    └── CreatureCard.py
-```
-
-Your import inside `main.py`:
+it is effectively evaluated as:
 
 ```python
-from ex0.CreatureCard import CreatureCard
+str.__eq__(ContactType.physical, "physical")
 ```
 
-This is an **absolute import** that requires Python to see `python07` as the project root.
+Which compares the underlying string value → `"physical" == "physical"` → `True`. That's why you still need to do `print(ContactType.physical.value)` to get the value, becase `print(ContactType.physical)` will not work, because as we knew the `__eq__` is the one gets the string ;) .
 
 ---
-
-## 1️⃣ Why this failed
-
-```
-python ex0/main.py
-```
-
-### What Python does internally
-
-When you run a script by path, Python sets:
-
-```
-sys.path[0] = folder containing the script
-```
-
-So Python sets:
-
-```
-sys.path[0] = python07/ex0
-```
-
-Python now searches for packages relative to **ex0**, not the project root.
-
-So when this line runs:
-
-```python
-from ex0.CreatureCard import CreatureCard
-```
-
-Python looks for:
-
-```
-python07/ex0/ex0/CreatureCard.py
-```
-
-It expects another `ex0` folder inside `ex0`.
-
-Which obviously doesn’t exist → 💥
-
-Error:
-
-```
-ModuleNotFoundError: No module named 'ex0'
-```
-
-### Root cause
-
-Running a file directly removes it from its package context.
-
-Your file became a **standalone script**, not part of the package.
-
----
-
-## 2️⃣ Why this failed
-
-```
-python -m ex0/main.py
-```
-
-This mixes **two incompatible syntaxes**.
-
-`-m` expects a **module name**, not a file path.
-
-You gave:
-
-```
-ex0/main.py  ❌ filesystem path
-```
-
-Python tried to interpret it as a module:
-
-```
-ex0/main.py  → module name "ex0/main.py"
-```
-
-But module names:
-
-* use dots `.`
-* never use `/`
-* never include `.py`
-
-So Python complains:
-
-```
-Try using 'ex0/main' instead of 'ex0/main.py'
-```
-
----
-
-## 3️⃣ Why this failed
-
-```
-python ex0.main
-```
-
-Here you forgot `-m`.
-
-Without `-m`, Python assumes you’re giving a **file path**.
-
-It literally tries to open a file named:
-
-```
-ex0.main
-```
-
-It searches for:
-
-```
-python07/ex0.main
-```
-
-That file does not exist → 💥
-
-Error:
-
-```
-can't open file 'ex0.main'
-```
-
----
-
-## 4️⃣ Why this worked ✅
-
-```
-python -m ex0.main
-```
-
-This is the **correct combination**:
-
-* `-m` → run as module
-* `ex0.main` → module path
-
-### What Python sets now
-
-When using `-m`, Python sets:
-
-```
-sys.path[0] = current working directory
-```
-
-Your working directory:
-
-```
-python07/
-```
-
-So Python searches from the project root and finds:
-
-```
-python07/ex0/__init__.py
-python07/ex0/main.py
-python07/ex0/CreatureCard.py
-```
-
-Then it executes as if Python did:
-
-```python
-import ex0.main
-```
-
-Now your import works perfectly:
-
-```python
-from ex0.CreatureCard import CreatureCard
-```
-
-Because Python can finally see the package root.
-
----
-
-# 🔥 The real lesson
-
-Running a file directly:
-
-```
-python ex0/main.py
-```
-
-👉 **Filesystem execution**
-
-Running with `-m`:
-
-```
-python -m ex0.main
-```
-
-👉 **Import system execution**
-
-And your code uses **import system semantics**, so only the last command matches.
-
-# 🧠 Final mental rule
-
-If your code imports using the package name:
-
-```python
-from ex0.something import X
-```
-
-You must run it as a module:
-
-```
-python -m ex0.main
-```
-
 ---
 # Protocol
 
@@ -3212,11 +3179,11 @@ Virtual environments enable:
 
 This is standard practice in **data engineering, web development, ML, and DevOps**.
 
----
+## **complete minimal project**:
 
 Here is a **complete minimal project** showing how a virtual environment fits into a real Python project. This is the simplest “professional-style” layout.
 
-# Step 0 — Project goal
+### Step 0 — Project goal
 
 We’ll build a tiny app that:
 
@@ -3229,10 +3196,7 @@ We’ll build a tiny app that:
 This is the real purpose of virtual environments:
 You want a project that works the same on **your computer**, **your teammate’s computer**, and **a server**.
 This is called **reproducibility**.
-
----
-
-# Step 1 — Create the project folder
+### Step 1 — Create the project folder
 
 ```bash
 mkdir hello_venv_project
@@ -3250,7 +3214,7 @@ We always isolate projects in their own directory so their files don’t mix.
 
 ---
 
-# Step 2 — Create the virtual environment
+### Step 2 — Create the virtual environment
 
 ```bash
 python3 -m venv venv
@@ -3281,7 +3245,7 @@ From now on, anything installed will stay **inside this folder only**.
 
 ---
 
-# Step 3 — Activate the environment
+### Step 3 — Activate the environment
 
 Linux / macOS:
 
@@ -3316,7 +3280,7 @@ The `(venv)` in the prompt is just a visual indicator.
 
 ---
 
-# Step 4 — Install a package inside the venv
+### Step 4 — Install a package inside the venv
 
 ```bash
 pip install requests
@@ -3337,7 +3301,7 @@ This is the core benefit of isolation.
 
 ---
 
-# Step 5 — Create the application files
+### Step 5 — Create the application files
 
 Create this structure:
 
@@ -3363,9 +3327,7 @@ We separate **environment** from **code**.
 
 This separation is standard in real projects.
 
----
-
-## File 1 — app/main.py
+#### File 1 — app/main.py
 
 ```python
 import requests
@@ -3395,9 +3357,7 @@ Key points:
 * The app calls a public API → demonstrates real dependency usage.
 * `if __name__ == "__main__":` → makes the file executable as a script.
 
----
-
-## File 2 — app/**init**.py
+#### File 2 — app/**init**.py
 
 Empty file (marks folder as Python package)
 
@@ -3419,9 +3379,7 @@ from app.main import get_quote
 
 Even if empty, it’s important in real projects.
 
----
-
-## File 3 — requirements.txt
+#### File 3 — requirements.txt
 
 Generate automatically:
 
@@ -3448,9 +3406,7 @@ This file is **critical** for reproducibility.
 This is what makes environments reproducible:
 Someone else can install the exact same versions.
 
----
-
-## File 4 — README.md
+#### File 4 — README.md
 
 ```markdown
 
@@ -3482,9 +3438,7 @@ README files explain:
 
 In real life, this is essential for teammates and future you.
 
----
-
-# Step 6 — Run the project
+### Step 6 — Run the project
 
 ```bash
 python app/main.py
@@ -3506,9 +3460,7 @@ Because the venv is active:
 
 Without the venv, this could fail on another machine.
 
----
-
-# Step 7 — What happens on another computer (important)
+### Step 7 — What happens on another computer (important)
 
 Someone cloning your project does:
 
@@ -3529,9 +3481,7 @@ They get **the exact same environment**.
 This is the entire reason virtual environments exist:
 The environment is **recreated from instructions**, not shared as files.
 
----
-
-# Step 8 — What NOT to commit
+### Step 8 — What NOT to commit
 
 Create `.gitignore`:
 
@@ -3547,9 +3497,7 @@ We never commit the venv folder because it can be recreated.
 The venv can be hundreds of MB and is machine-specific.
 We only commit the **instructions to rebuild it**.
 
----
-
-# Final project tree
+### Final project tree
 
 ```
 hello_venv_project/
@@ -3571,7 +3519,7 @@ If you want, next we can upgrade this into a **real package with pyproject.toml*
 There are several reliable ways to verify whether your shell is currently using a virtual environment.
 
 ---
-# Check if you’re in a virtual environment
+# How to check if you’re in a virtual environment
 
 ## **1) Check which Python executable is being used (most reliable)**
 
@@ -3603,8 +3551,6 @@ If you are NOT in a venv, you’ll see something like:
 
 This is the **best verification method**.
 
----
-
 ## **2) Check environment variable (quick check)**
 
 Linux / macOS:
@@ -3621,8 +3567,6 @@ echo %VIRTUAL_ENV%
 
 If active → prints path to venv
 If empty → no virtual environment active.
-
----
 
 ## **3) Programmatic check inside Python code**
 
@@ -4725,7 +4669,7 @@ So even though _you raise `ValueError`_, the outside world receives a `Validatio
 
 ---
 
-#  `@field_validator`
+# `@field_validator`
 
 `@field_validator` is a **decorator used to write custom validation logic for a specific field** in a Pydantic model. You use `@field_validator` when `Field()` is not enough to express the rule.
 
@@ -4738,7 +4682,7 @@ Think of it as:
 for a `@field_validator` It must return the value, Pydantic expects the validated (or transformed) field value back.  If you don’t return it → the field becomes None. 
 
 It should be a class method `(cls)`, Field validators run before the model instance exists, so there is no `self`. That’s why the first parameter is the class: `cls`.
-# Basic example
+## Basic example
 
 ```python
 from pydantic import BaseModel, field_validator  
@@ -4763,7 +4707,7 @@ def normalize(cls, v):
 
 Whenever `username` is validated, these functions runs automatically.
 
-# Why does it exist?
+## Why does it exist?
 
 Because not all validation rules are simple.
 
@@ -4776,7 +4720,7 @@ Some rules require:
 
 That’s what `@field_validator` is for.
 
-# Side-by-side comparison with the `field()`
+## Side-by-side comparison with the `field()`
 
 |Feature|`Field(...)` constraints|`@field_validator`|
 |---|---|---|
@@ -4799,7 +4743,7 @@ If `@field_validator` checks _one attribute_,
 
 Also In before mode `@model_validator(mode="before")` , the model does not exist yet.
 Pydantic gives you the raw input data before parsing and validation happen. So you must return the data that Pydantic should continue validating.
-# Why it exists
+## Why it exists
 
 Some rules require **multiple fields together**.
 
@@ -4812,7 +4756,7 @@ Examples:
 
 A single field validator cannot see the whole picture.
 
-# Basic idea
+## Basic idea
 
 ```python
 @model_validator(mode="after")
@@ -4825,7 +4769,7 @@ It runs after all fields have already been parsed and validated.
 
 So inside the validator you get a **fully typed model object**.
 
-# Example: password confirmation
+## Example: password confirmation
 
 ```python
 from pydantic import BaseModel, model_validator
@@ -4849,7 +4793,7 @@ User(password="secret", confirm_password="123")
 
 Because the model-level rule is violated.
 
-# When model validators run
+## When model validators run
 
 Model validation happens in this order:
 
@@ -4863,9 +4807,9 @@ Model validation happens in this order:
 
 So model validators see **final cleaned data**.
 
-# Two modes of model validators
+## Two modes of model validators
 
-## 1) `mode="after"` (most common)
+### 1) `mode="after"` (most common)
 
 Runs **after validation**.  
 You receive the **model instance**.
@@ -4885,7 +4829,7 @@ def validate_model(self):
 ```
 
 
-## 2) `mode="before"`
+### 2) `mode="before"`
 
 Runs **before validation**.  
 You receive the **raw input dictionary**.
@@ -4910,7 +4854,7 @@ def preprocess(cls, data):
 
 This runs **before any field parsing happens**.
 
-# field_validator vs model_validator
+## field_validator vs model_validator
 
 |Feature|field_validator|model_validator|
 |---|---|---|
@@ -4918,7 +4862,7 @@ This runs **before any field parsing happens**.
 |Sees entire model|✗|✓|
 |Used for relationships|✗|✓|
 |Can modify raw input|✗|✓ (before mode)|
-# Mental model
+## Mental model
 
 - `@field_validator` → validate a value
     
@@ -5670,7 +5614,7 @@ def fib(n):
 Very useful for expensive calculations.
 
 ---
-# wraps
+# `wraps`
 
 `wraps` is a helper from `functools` used **inside decorators** to preserve the original function’s metadata.
 
