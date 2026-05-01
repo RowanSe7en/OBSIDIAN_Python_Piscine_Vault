@@ -2319,56 +2319,113 @@ func()
 
 # Circular Dependency
 
-A **circular dependency** happens when two or more modules try to import each other, creating a loop that Python can't resolve during loading.
+A circular dependency appears when two modules require each other **during import time**.
+
+The key rule of Python imports:
+
+> Importing a module = executing the file from top to bottom **once**, then caching it in `sys.modules`.
+
+During this execution, the module exists in a **partially initialized state**.  
+If another module tries to access objects that are not defined yet, the import fails.
+
+## The Problem We Will Solve
+
+We want two modules to cooperate:
+
+- `one.py` owns **func_a**
+    
+- `two.py` owns **func_b**
+    
+- `func_a()` must call `func_b()`
+    
+- `func_b()` must call `func_a()`
+    
+
+This naturally creates a cycle.
+
+## ❌ Broken Circular Import Example
+
+### one.py
 
 ```python
-## module a.py
-from b import func_b
+from two import func_b
 
 def func_a():
     print("Function A")
     func_b()
-```
 
-```python
-## module b.py
-from a import func_a
-
-def func_b():
-    print("Function B")
+if __name__ == "__main__":
     func_a()
 ```
 
-If you try to `import a` or `import b`, Python gets stuck because:
-- `a.py` imports `b.py`
-- `b.py` imports `a.py`
-- Python is still trying to finish loading `a.py` → `func_a` doesn't exist yet
-- Crash or `ImportError` occurs
-### How to Fix Circular Dependencies
+### two.py
 
-**1 Late Import (Recommended)**
+```python
+from one import func_a
 
-**`one.py`**
+def func_b():
+    print("Function B")
+```
+
+### Running
+
+```
+python one.py
+```
+
+### What happens internally
+
+1. Python begins loading **one**
+    
+2. Encounters `from two import func_b`
+    
+3. Starts loading **two**
+    
+4. Encounters `from one import func_a`
+    
+5. Python sees module **one already exists but is not finished**
+    
+6. `func_a` has not been defined yet → ImportError
+    
+
+The dependency loop exists **during module initialization**, which is the dangerous moment.
+
+## Solution 1 — Late Import (Lazy Import)
+
+Move the import inside the function so the dependency is needed **at runtime**, not during module initialization.
+
+Late imports work because Python only executes **top-level (global) code** when it imports it. Code inside functions is saved but not run until the function is called. If an import is at the top, it runs too early and the other file may not be ready yet, which causes the circular import error. Putting the import inside a function makes Python wait until the program is already running and both files are fully loaded, so the import happens safely.
+
+### one.py
+
 ```python
 def func_a():
     from two import func_b
     print("Function A")
+    func_b()
 
-func_a()
+if __name__ == "__main__":
+    func_a()
 ```
 
-**`two.py`**
+### two.py
+
 ```python
 def func_b():
     from one import func_a
     print("Function B")
-
-func_b()
 ```
 
-**Execution Trace**
+### Output
 
-When you run `python one.py`, here's exactly what happens:
+```
+Function A
+Function B
+```
+
+### Execution Trace (step-by-step)
+
+When running:
 
 ```
 python one.py
@@ -2388,68 +2445,80 @@ python one.py
 │       │       ├── [one] func_a() is called
 │       │       │   └── from two import func_b  →  already cached, no re-run
 │       │       │
-│       │       └── print("Function A")  ──────────────────────────── A ①
+│       │       └── print("Function A")  ─────────── A ①
 │       │
-│       └── print("Function B")  ────────────────────────────────── B ②
+│       └── print("Function B")  ─────────────────── B ②
 │
-└── print("Function A")  ──────────────────────────────────────── A ③
+└── print("Function A")  ─────────────────────────── A ③
 ```
 
-The trick is that **`__main__` ≠ module `one`** in Python's module registry (`sys.modules`).
+Important concept revealed here:
 
-| Execution | Module name in `sys.modules` |
+|Execution|Module name|
 |---|---|
-| `python one.py` | Registered as `__main__` |
-| `from one import ...` inside two.py | Registered as `one` (a fresh import!) |
+|Running file directly|`__main__`|
+|Importing the same file|`one`|
 
-Because of this, `one.py` runs **twice** — once as `__main__` and once as `one` — while `two.py` runs only once, giving you **A → B → A**.
+So the file can execute twice under different names.
 
----
+## Solution 2 — Dependency Injection
 
-**2 Dependency Injection**
+Instead of modules importing each other, the dependency is **passed from the outside**.
+
+This removes the circular dependency entirely.
+
+### two.py
 
 ```python
-# two.py
 def func_b():
     print("Function B")
 ```
 
+### one.py
+
 ```python
-# one.py
 def func_a(func_b):
     print("Function A")
     func_b()
 
 if __name__ == "__main__":
     from two import func_b
-    func_a(func_b)          # wiring happens right here
+    func_a(func_b)
 ```
 
-Run: `python one.py` → works fine, no third file needed.
+### Output
 
----
+```
+Function A
+Function B
+```
 
-**3 Separate Shared Module**
+### Why this works
 
-Move shared functions to a new module that both modules can safely import. or use an other file that imports both of them.
+`one.py` no longer imports `two` at module level.  
+The wiring happens only in the program entry point.
 
-`shared.py` is the only one that imports — `one.py` and `two.py` know nothing about each other.
+This pattern is called **inversion of control** and is heavily used in large systems.
 
-**`one.py`** ← no imports at all
+## Solution 3 — Separate Shared Module
+
+The circular dependency shows both modules are being composed in the wrong place.  
+A third module becomes the **composition root**.
+### one.py
 
 ```python
 def func_a():
     print("Function A")
 ```
 
-**`two.py`** ← no imports at all
+### two.py
 
 ```python
 def func_b():
     print("Function B")
 ```
 
-**`shared.py`** ← the only file that imports from both
+### app.py
 
 ```python
 from one import func_a
@@ -2459,15 +2528,89 @@ func_a()
 func_b()
 ```
 
-**Output of `python shared.py`:**
+#### Output
 
 ```
 Function A
 Function B
 ```
 
----
+Here:
 
+- `one` and `two` are independent
+    
+- only `app.py` knows about both
+    
+
+This produces a **clean dependency graph**.
+## Solution 4 — Import the Module, Not the Function
+
+This technique relies on a subtle but very important behavior of Python’s import system:
+
+`import module` is safer than `from module import name` in circular dependencies. Why?, Because `import module` only requires the **module object** to exist.
+It does **not** require its contents to already be defined.
+
+Python can provide a partially initialized module object safely.
+### Apply this fix to the SAME problem
+
+We still want:
+
+* `func_a()` calls `func_b()`
+* `func_b()` calls `func_a()`
+
+### one.py
+
+```python
+print("Loading A")
+
+import two   # ← import module, not function
+
+def func_a():
+    print("Function A")
+    two.func_b()
+
+if __name__ == "__main__":
+    func_a()
+```
+
+### two.py
+
+```python
+print("Loading B")
+
+import one   # ← import module, not function
+
+def func_b():
+    print("Function B")
+    one.func_a()
+```
+
+### Run
+
+```
+python one.py
+```
+
+### Output
+
+```
+Loading A
+Loading B
+Function A
+Function B
+Function A
+```
+
+## Comparing the Three Fixes
+
+| Fix                  | Strategy                                     | Best use case                |
+| -------------------- | -------------------------------------------- | ---------------------------- |
+| Late Import          | Delay dependency until runtime               | Small/local cycles           |
+| Dependency Injection | Pass dependency from entry point             | Clean architecture / testing |
+| Shared Module        | Move composition to third module             | Structural refactor          |
+| Import Module        | Use `import module` instead of symbol import | Mutual module collaboration  |
+
+---
 # Absolute & Relative Imports
 
 Both are ways to tell Python where to find a module or function.
@@ -2557,8 +2700,6 @@ project_with_empty_init/
     └── mul.py
 ```
 
----
-
 ## mathpack/**init**.py
 
 ```python
@@ -2602,8 +2743,6 @@ Output:
 Add: 8
 Multiply: 15
 ```
-
----
 
 ## 2️⃣ Package WITHOUT `__init__.py`
 
@@ -2671,7 +2810,7 @@ The only difference is **package type**:
 
 In Python, code can run in script mode (directly via a file path) or package mode (via python -m). Script mode treats the file as standalone, often breaking absolute imports, while package mode respects the package structure, sets sys.path correctly, and allows imports to work as intended. Using package mode is essential when running code inside a package.
 
-> You will master **script mode** (directly via a file path) and **package mode** (via `python -m`).
+> NOW You will master **script mode** (directly via a file path) and **package mode** (via `python -m`).
 
 ## Example:
 
