@@ -830,7 +830,169 @@ sys.modules['t2']: <module 't2' from '/home/kali/1337/python/test/t2.py'>
 ```
 
 ---
+# Program’s life cycle
 
+**Load time, Import time, and Runtime** are the three moments that describe **when Python executes different kinds of code** during a program’s life cycle. The order is:
+
+> **Load time → Import time → Runtime**
+
+Let’s define each precisely and connect them.
+
+## 1) Load time (file loading / compilation phase)
+
+**Load time = when Python reads a `.py` file and compiles it to bytecode before executing it.**
+
+When you run:
+
+```bash
+python main.py
+```
+
+Python first:
+
+1. Opens the file
+    
+2. Parses the source code
+    
+3. Converts it into **bytecode**
+    
+4. Prepares a module object to execute
+    
+
+No statements run yet — Python is preparing the module to execute.
+
+Think of this as:
+
+> “Python is _understanding_ the file.”
+
+### What happens here technically
+
+- Syntax checking happens
+    
+- Indentation errors happen here
+    
+- The file becomes a **module object**
+    
+
+If syntax is wrong → program stops **before execution starts**.
+
+Example syntax error (load time error):
+
+```python
+print("File started loading")
+
+def crash():    
+	print("About to crash")    
+	return 1 / 0   # logical/runtime error
+
+crash()
+
+print("File finished loading")
+```
+
+Example of not load time error:
+
+```python
+print("File started loading")
+
+def crash():    
+	print("About to crash")    
+	return 1 / 0   # logical/runtime error
+
+print("File finished loading")
+```
+
+Because the function `crash()` was **defined**, not executed.
+## 2) Import time (module execution phase)
+
+**Import time = when Python executes the top-level code of a module the first time it is imported.**
+
+This is extremely important:
+
+> In Python, **importing a file runs it.**
+
+When Python sees:
+
+```python
+import math_utils
+```
+
+It does:
+
+1. Load the module (step 1)
+    
+2. Execute **all top-level code inside it**
+    
+3. Store the module in `sys.modules`
+    
+4. Future imports reuse the cached module (no re-execution)
+    
+
+### What counts as _top-level code_?
+
+Everything **not inside a function or class**.
+
+Example:
+
+```python
+print("Hello from module")   # runs at import time
+
+x = 5                        # runs at import time
+
+def func():
+    print("inside function") # NOT run at import
+```
+
+So importing this module prints immediately.
+
+### Why `if __name__ == "__main__"` exists
+
+To prevent code from running at import time unintentionally.
+
+```python
+if __name__ == "__main__":
+    main()
+```
+
+This block runs **only when file is executed directly**, not when imported.
+
+## 3) Runtime (program execution phase)
+
+**Runtime = when your program is actively running after all modules are loaded and imported.**
+
+This is the phase where:
+
+- Functions are called
+    
+- Loops run
+    
+- Input is processed
+    
+- Threads run
+    
+- The actual application logic happens
+    
+
+Everything inside functions/classes typically runs at runtime.
+
+Example:
+
+```python
+def greet():
+    print("Hello")
+
+greet()  # runtime execution
+```
+
+## Short mental model
+
+|Phase|What Python is doing|Typical errors|
+|---|---|---|
+|**Load time**|Parsing & compiling the file|SyntaxError|
+|**Import time**|Executing module top-level code|Import side effects|
+|**Runtime**|Running the program logic|Bugs, exceptions|
+
+---
 # `if __name__ == "__main__"`
 
 The `if __name__ == "__main__":` check determines whether the Python script is being **run directly** or **imported as a module**.
@@ -2375,18 +2537,22 @@ python one.py
 
 ### What happens internally
 
-1. Python begins loading **one**
-    
-2. Encounters `from two import func_b`
-    
-3. Starts loading **two**
-    
-4. Encounters `from one import func_a`
-    
-5. Python sees module **one already exists but is not finished**
-    
-6. `func_a` has not been defined yet → ImportError
-    
+```mermaid
+flowchart TD
+    A[Run one.py as script] --> B[Create module '__main__' from one.py]
+    B --> C[Execute top-level of __main__]
+    C --> D[__main__: from two import func_b]
+    D --> E[Create empty module 'two']
+    E --> F[Execute top-level of two]
+    F --> G[two: from one import func_a]
+    G --> H{Is module 'one' in sys.modules?}
+    H -->|No| I[Create SECOND module 'one' from one.py]
+    I --> J[Execute top-level of module 'one']
+    J --> K[module 'one': from two import func_b]
+    K --> L[Python finds partially initialized 'two']
+    L --> M{Is func_b already defined?}
+    M -->|No| N[ImportError: partially initialized module]
+```
 
 The dependency loop exists **during module initialization**, which is the dangerous moment.
 
@@ -2436,20 +2602,17 @@ python one.py
 │   └── from two import func_b  →  triggers full execution of two.py
 │       │
 │       ├── [two] func_b is defined
-│       ├── [two] func_b() is called
-│       │   │
-│       │   └── from one import func_a  →  triggers full execution of one.py
-│       │       │                           (as module "one", NOT __main__)
-│       │       │
-│       │       ├── [one] func_a is defined
-│       │       ├── [one] func_a() is called
-│       │       │   └── from two import func_b  →  already cached, no re-run
-│       │       │
-│       │       └── print("Function A")  ─────────── A ①
 │       │
-│       └── print("Function B")  ─────────────────── B ②
+│       └── from one import func_a  →  triggers full execution of one.py
+│                                   (as module "one", NOT __main__)
+│       │
+│       ├── [one] func_a is defined
+│       │
+│       ├── from two import func_b  → already cached, no re-run
+│       │
+│       └── print("Function A")  ─────────── A ①
 │
-└── print("Function A")  ─────────────────────────── A ③
+└── print("Function A")  ─────────────────── A ②
 ```
 
 Important concept revealed here:
@@ -2582,7 +2745,6 @@ import one   # ← import module, not function
 
 def func_b():
     print("Function B")
-    one.func_a()
 ```
 
 ### Run
@@ -2601,6 +2763,14 @@ Function B
 Function A
 ```
 
+```mermaid
+flowchart LR
+    A[from module import name] --> B[Needs attribute NOW]
+    B --> C[Circular import breaks]
+
+    D[import module] --> E[Needs attribute LATER]
+    E --> F[Circular import works]
+```
 ## Comparing the Three Fixes
 
 | Fix                  | Strategy                                     | Best use case                |
