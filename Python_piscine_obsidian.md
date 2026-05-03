@@ -2602,17 +2602,20 @@ python one.py
 │   └── from two import func_b  →  triggers full execution of two.py
 │       │
 │       ├── [two] func_b is defined
+│       ├── [two] func_b() is called
+│       │   │
+│       │   └── from one import func_a  →  triggers full execution of one.py
+│       │       │                           (as module "one", NOT __main__)
+│       │       │
+│       │       ├── [one] func_a is defined
+│       │       ├── [one] func_a() is called
+│       │       │   └── from two import func_b  →  already cached, no re-run
+│       │       │
+│       │       └── print("Function A")  ─────────── A ①
 │       │
-│       └── from one import func_a  →  triggers full execution of one.py
-│                                   (as module "one", NOT __main__)
-│       │
-│       ├── [one] func_a is defined
-│       │
-│       ├── from two import func_b  → already cached, no re-run
-│       │
-│       └── print("Function A")  ─────────── A ①
+│       └── print("Function B")  ─────────────────── B ②
 │
-└── print("Function A")  ─────────────────── A ②
+└── print("Function A")  ─────────────────────────── A ③
 ```
 
 Important concept revealed here:
@@ -3521,8 +3524,6 @@ Project is empty now.
 
 We always isolate projects in their own directory so their files don’t mix.
 
----
-
 ### Step 2 — Create the virtual environment
 
 ```bash
@@ -3551,8 +3552,6 @@ Inside that folder Python creates:
 * its own site-packages directory
 
 From now on, anything installed will stay **inside this folder only**.
-
----
 
 ### Step 3 — Activate the environment
 
@@ -3587,8 +3586,6 @@ So when you install packages, they go into the venv instead of the global system
 
 The `(venv)` in the prompt is just a visual indicator.
 
----
-
 ### Step 4 — Install a package inside the venv
 
 ```bash
@@ -3607,8 +3604,6 @@ Because the venv is active:
 * your system Python stays clean.
 
 This is the core benefit of isolation.
-
----
 
 ### Step 5 — Create the application files
 
