@@ -4217,6 +4217,188 @@ plt.show()
 | `plt.grid(True)`                           | Show grid lines on the plot                        |
 
 ---
+# Poetry and `TOML`
+
+**Poetry** and **TOML** usually come up together in Python development, but they’re two different things:
+### 🧰 Poetry (tool)
+
+**Poetry** is a tool used to manage Python projects. It helps you:
+
+- Install and manage dependencies (libraries your project needs)
+    
+- Create virtual environments automatically
+    
+- Package and publish Python projects
+    
+- Keep track of exact versions of dependencies for reproducibility
+    
+
+Think of it as a modern alternative to tools like `pip` + `virtualenv` + `requirements.txt`, all combined into one cleaner workflow.
+
+### 📄 TOML (file format)
+
+**TOML** is a configuration file format. It’s designed to be:
+
+- Easy for humans to read and write
+    
+- Structured (like JSON or YAML, but simpler in many cases)
+    
+
+It uses key-value pairs, sections, and arrays. Example:
+
+```toml
+[tool.poetry]
+name = "my-project"
+version = "0.1.0"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.10"
+requests = "^2.31.0"
+```
+
+`[tool.poetry]` is a **Poetry-specific section** in `pyproject.toml` that lets **Poetry** understand its own settings.  
+It’s where you define things like dependencies and special options such as `package-mode`, which aren’t part of the standard `[project]` format.  
+Without `[tool.poetry]`, Poetry wouldn’t know how to apply its custom behavior.
+### 🔗 How they work together
+
+Poetry uses a file called **`pyproject.toml`**, which is written in TOML format. This file defines:
+
+- Project metadata (name, version, author)
+    
+- Dependencies
+    
+- Build configuration
+    
+
+So:
+
+- **Poetry = the tool**
+    
+- **TOML = the format used to configure it**
+    
+
+## Installing dependencies using poetry
+
+### First What Poetry is trying to do by default
+
+Poetry has **two operating modes**:
+
+- **Package mode (default)** → “I am building a distributable Python package”
+    
+- **Dependency-only mode** → “I am just managing dependencies for an app/script”
+    
+
+By default Poetry assumes **package mode** unless told otherwise.
+
+### `[tool.poetry]`
+
+`package-mode = false` : Tells Poetry: **do NOT treat this project as a Python package.** `poetry install` will install **only dependencies**, and will not try to install the current project.
+
+### `[tool.poetry.dependencies]`
+
+`python = "^3.10"`: Defines which Python versions are allowed.
+
+**If missing**
+
+Poetry allows any Python version → environments become **non-reproducible**.  
+So this is **strongly required in practice**.
+
+`pandas = "*"`: Install the latest compatible version of pandas.
+
+Equivalent to:
+
+```
+pip install pandas
+```
+
+You can later pin a version if needed.
+
+## About `name` and `version`
+
+For **dependency-only projects**:
+
+They are **not functionally needed** to install dependencies.
+
+Poetry asks for them because its configuration schema was originally designed for **packaging**.
+
+When `package-mode = false`, they become **metadata placeholders**, not operational fields.
+
+## Package mode (setuptools)
+
+This configuration is for the **normal packaging workflow**: building and installing your project as a distributable Python package (wheel/sdist) for A-MAZE-ING.
+## `[build-system]`
+
+This section tells pip **how to build your project**.
+
+`requires = ["setuptools>=65", "wheel"]`: Tools that must exist **before building** your package.
+
+- `setuptools` → builds the package
+    
+- `wheel` → produces `.whl` files
+    
+`build-backend = "setuptools.build_meta"`: Specifies the **build backend** used by PEP 517.
+
+Meaning:
+
+```bash
+pip → call setuptools to build the package
+```
+
+Without this, pip cannot build the project.
+
+## `[project]`
+
+This is **modern package metadata** (PEP 621).
+
+`name = "mazegen"`: The package distribution name.
+
+Used for:
+
+- `pip install mazegen`
+    
+- PyPI publishing
+    
+- Wheel metadata
+    
+
+**If missing**
+
+Build fails — a package must have a name.
+
+`version = "1.0.0"`: Package version used in:
+
+- wheel filename
+    
+- dependency resolution
+    
+- publishing
+    
+
+**If missing**
+
+Build fails — version is mandatory for packages.
+
+## `[tool.setuptools.packages.find]`
+
+This tells setuptools **where your Python code lives**.
+
+`where = ["."]`: Search the current directory for package folders.
+
+Setuptools will look for folders containing `__init__.py`, e.g.:
+
+```
+mazegen/
+    __init__.py
+    maze.py
+```
+
+**If missing**
+
+Setuptools may not find any packages → wheel builds empty or fails.
+
+---
+
 # Difference between pip and Poetry
 
 **Pip** is Python’s standard package installer. It installs libraries from PyPI based on what you ask for (like a `requirements.txt` file). It’s simple and works well for small projects, but it **does not manage conflicts or reproducibility automatically**.
@@ -4235,9 +4417,7 @@ plt.show()
 * It will **not partially install anything**, so your environment stays clean.
 * Poetry generates a **`poetry.lock` file** that locks exact versions — this ensures **reproducible installations** on other machines.
 
-
 ## Examples:
-
 
 ## **1-`requirements.txt` (for pip)**
 
@@ -4523,55 +4703,97 @@ Pydantic solves this by turning validation into **declarative schemas**.
 
 When you inherit from `BaseModel`, your class automatically gains:
 
-### 1) Parsing
+### 1) Data Parsing (Type Coercion)
 
 ```python
+from pydantic import BaseModel
+
+class User(BaseModel):
+	id: int
+
 User(id="123")  # converts to int
 ```
 
-### 2) Validation engine
+### 2) Data Validation (Constraints Engine)
 
 ```python
-username: str = Field(min_length=3)
+from pydantic import BaseModel
+
+class User(BaseModel):
+	username: str = Field(min_length=3)
 ```
 
-### 3) Parsing and validation
+### 3) Data Loading (Input Adapters)
 
-Python dictionaries (most common):
+Pydantic accepts multiple input sources and adapts them into the model. like:
+
+#### Python dictionaries (most common):
 
 ```python
 data = {"id": "123", "name": "Alice"}
 User.model_validate(data)
 ```
 
-Json string:
+#### Json string:
 
 ```python
 json_string = '{"id": 1, "username": "Neo", "is_admin": true}'
 User.model_validate_json(json_string)
 ```
 
-Python objects (ORM / custom classes):
+#### Attribute-based object loading (Pydantic v2)
 
-Pydantic can read attributes from objects — this is huge for databases.
+Pydantic can validate data directly from **object attributes** (useful for ORMs, dataclasses, and custom classes).  
+However, starting in **Pydantic v2**, this behavior is **disabled by default**.
+
+In Pydantic v1, models would automatically read attributes from objects.  
+In v2, you must explicitly opt in for safety and clarity.
+
+To allow attribute loading, you must tell the model:
+
+> “This model is allowed to read attributes from objects.”
+
+You do this by enabling this inside the model configuration.:
 
 ```python
+from_attributes = True
+```
+
+```python
+from pydantic import BaseModel, ConfigDict
+
+# A regular Python class (like a DB/ORM object)
 class DbUser:
-    def __init__(self):
-        self.id = 1
-        self.name = "Alice"
+    def __init__(self, id, name):
+        self.id = id
+        self.name = name
+        self.is_admin = False
 
-db_user = DbUser()
+
+class User(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    is_admin: bool = False
+
+
+db_user = DbUser("123", "Alice")
+
 user = User.model_validate(db_user)
+print(user)
 ```
 
-It reads attributes like:
+**Output**
 
 ```
-db_user.id
-db_user.name
+id=123 name='Alice' is_admin=False
 ```
-### 3) Serialization
+
+Pydantic read the attributes, parsed the types, and returned a fully validated model.
+### 3) Serialization (Exporting Data)
+
+Turning validated models back into transport formats.
 
 ```python
 from pydantic import BaseModel
@@ -4593,13 +4815,31 @@ print(user.model_dump_json())
 {'id': 1, 'username': 'neo', 'is_admin': False}
 {"id":1,"username":"neo","is_admin":false}
 ```
-### 4) Error reporting
+### 4) Structured Error Modeling
 
-Clear `ValidationError` messages.
+Pydantic represents validation failures as a **structured error tree** rather than plain text messages.  
+When validation fails, it raises a `ValidationError` object that contains machine-readable data describing:
+
+- **Where** the error happened (field path / location)
+    
+- **What** rule failed (error type)
+    
+- **Why** it failed (human-readable message)
+    
+- **What input caused it** (received value)
+    
+
+This design means errors are **data you can inspect, transform, log, or return in APIs**, while still providing clear and readable messages for humans.
 
 ### 5) Schema generation
 
-Used to generate OpenAPI docs in FastAPI.
+Producing machine-readable schemas from models.
+
+Used for:
+
+- OpenAPI
+- JSON Schema
+- FastAPI docs
 
 ## Basic example
 
@@ -4617,7 +4857,6 @@ class User(BaseModel):
 
   
 ```python
-data = {"id": "123", "name": "Alice"}
 user = User(id="123", name="Alice")
 print(user)
 ```
@@ -4651,7 +4890,6 @@ Instead of silent bugs, you get **precise error messages**.
 
 You don’t write `__init__` because **BaseModel generates one dynamically**. The constructor comes from the parent (`BaseModel`), but it is **generated at runtime using metaprogramming**.
 ## Nested models
-
 
 ```python
 class Address(BaseModel):
@@ -4724,7 +4962,8 @@ Most common in:
 
 It’s basically the **standard validation layer in modern Python backends**.
 
-## `Field()`
+---
+# `Field()`
 
 `Field()` is a **helper function from Pydantic used to add validation rules and metadata to a model attribute**.
 
